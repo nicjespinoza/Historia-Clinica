@@ -1,0 +1,114 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules
+// Protects patient data, chat images, and profile pictures
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ============================================================
+    // HELPER FUNCTIONS
+    // ============================================================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is the owner of the file
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Get user role from custom claims
+    function getUserRole() {
+      return request.auth.token.role;
+    }
+    
+    // Check if user is a doctor or admin
+    function isPrivileged() {
+      return isAuthenticated() && (getUserRole() == 'doctor' || getUserRole() == 'admin');
+    }
+    
+    // Check if user is staff (doctor, admin, or assistant)
+    function isStaff() {
+      return isAuthenticated() && (getUserRole() == 'doctor' || getUserRole() == 'admin' || getUserRole() == 'assistant');
+    }
+    
+    // Validate image file
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*')
+             && request.resource.size < 10 * 1024 * 1024; // Max 10MB
+    }
+    
+    // Validate document file (images and PDFs)
+    function isValidDocument() {
+      return (request.resource.contentType.matches('image/.*') || 
+              request.resource.contentType == 'application/pdf')
+             && request.resource.size < 20 * 1024 * 1024; // Max 20MB
+    }
+    
+    // ============================================================
+    // PROFILE PICTURES
+    // ============================================================
+    match /profiles/{userId}/{allPaths=**} {
+      // Anyone can read profile pictures (public)
+      allow read: if true;
+      
+      // Only the owner can upload/update their profile picture
+      allow write: if isOwner(userId) && isValidImage();
+      
+      // Only owner or admin can delete
+      allow delete: if isOwner(userId) || isPrivileged();
+    }
+    
+    // ============================================================
+    // PATIENT DOCUMENTS (Medical Records, Lab Results)
+    // ============================================================
+    match /patients/{patientId}/{allPaths=**} {
+      // Staff can read all patient documents
+      // Patients can read only their own documents (by email match)
+      allow read: if isStaff() || 
+                    (isAuthenticated() && request.auth.token.email == resource.metadata.patientEmail);
+      
+      // Only staff can upload patient documents
+      allow write: if isStaff() && isValidDocument();
+      
+      // Only privileged users can delete patient documents
+      allow delete: if isPrivileged();
+    }
+    
+    // ============================================================
+    // CHAT IMAGES
+    // ============================================================
+    match /chat/{roomId}/{allPaths=**} {
+      // Participants of the chat room can read
+      // Note: We can't access Firestore from Storage rules, so we use auth
+      allow read: if isAuthenticated();
+      
+      // Authenticated users can upload (with size/type validation)
+      allow write: if isAuthenticated() && isValidImage();
+      
+      // Only privileged users can delete chat images
+      allow delete: if isPrivileged();
+    }
+    
+    // ============================================================
+    // TEMPORARY UPLOADS
+    // ============================================================
+    match /temp/{userId}/{allPaths=**} {
+      // Only owner can access temp files
+      allow read, write: if isOwner(userId) && isValidDocument();
+      
+      // Auto-delete handled by Cloud Functions (24 hour cleanup)
+      allow delete: if isOwner(userId) || isPrivileged();
+    }
+    
+    // ============================================================
+    // DEFAULT: DENY ALL
+    // ============================================================
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
