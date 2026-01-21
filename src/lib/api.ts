@@ -1,5 +1,6 @@
 import { Patient, InitialHistory, SubsequentConsult, Appointment } from '../types';
 import { db } from './firebase';
+import { logAudit } from './audit';
 import {
     collection,
     doc,
@@ -153,6 +154,12 @@ export const api = {
         // Invalidate patients cache so next fetch gets fresh data
         firestoreCache.invalidate('patients:all_v3');
 
+        await logAudit({
+            action: 'CREATE_PATIENT',
+            details: `Created patient ${patientData.firstName} ${patientData.lastName}`,
+            targetId: docRef.id
+        });
+
         return { id: docRef.id, ...patientData } as Patient;
     },
 
@@ -208,8 +215,15 @@ export const api = {
 
         // 3. Delete Patient Doc
         await deleteDoc(patientRef);
+        await deleteDoc(patientRef);
         firestoreCache.invalidate('patients:all_v3');
         firestoreCache.invalidatePattern('^appointments:');
+
+        await logAudit({
+            action: 'DELETE_PATIENT',
+            details: `Deleted patient ${id} and all related data`,
+            targetId: id
+        });
     },
 
     /**
@@ -264,6 +278,12 @@ export const api = {
     createHistory: async (data: Omit<InitialHistory, 'id'>): Promise<InitialHistory> => {
         // Always save new histories to the subcollection
         const docRef = await addDoc(collection(db, 'patients', data.patientId, 'histories'), data);
+        await logAudit({
+            action: 'CREATE_HISTORY',
+            details: `Created history for patient ${data.patientId}`,
+            targetId: docRef.id,
+            metadata: { patientId: data.patientId }
+        });
         return { id: docRef.id, ...data } as InitialHistory;
     },
 
@@ -373,6 +393,12 @@ export const api = {
 
     createConsult: async (data: Omit<SubsequentConsult, 'id'>): Promise<SubsequentConsult> => {
         const docRef = await addDoc(collection(db, 'patients', data.patientId, 'consults'), data);
+        await logAudit({
+            action: 'CREATE_CONSULT',
+            details: `Created consult for patient ${data.patientId}`,
+            targetId: docRef.id,
+            metadata: { patientId: data.patientId }
+        });
         return { id: docRef.id, ...data } as SubsequentConsult;
     },
 

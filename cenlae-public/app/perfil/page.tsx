@@ -1,8 +1,9 @@
+'use client';
+
 import React from 'react';
 import { motion } from 'framer-motion';
-// Asegúrate de que estas rutas sean correctas en tu proyecto
-import { NavbarCenlae } from './NavbarCenlae';
-import { FooterCenlae } from './FooterCenlae';
+import { NavbarCenlae } from '@/components/NavbarCenlae';
+import { FooterCenlae } from '@/components/FooterCenlae';
 
 // --- DATA ---
 const especialidades = [
@@ -77,14 +78,11 @@ const asociaciones = [
 
 // --- COMPONENTS ---
 
-// Timeline component optimizado para alineación perfecta
 const VerticalTimeline = ({ items }: { items: any[] }) => (
     <div className="relative border-l-2 border-white/30 ml-3 md:ml-4 my-2 py-2 space-y-10">
         {items.map((item, index) => (
             <div key={index} className="relative pl-8 md:pl-10 group">
-                {/* Dot: Ajustado a -left-[7px] para centrarse perfectamente en el border de 2px */}
                 <span className="absolute -left-[7px] top-1.5 h-4 w-4 rounded-full bg-white border-4 border-[#003366] shadow-[0_0_0_2px_rgba(255,255,255,0.2)] transition-transform group-hover:scale-110"></span>
-
                 <div className="flex flex-col text-white">
                     <h4 className="font-bold text-lg leading-tight tracking-wide">{item.titulo}</h4>
                     {item.lugar && <span className="text-sm font-medium text-blue-100/90 mt-1">{item.lugar}</span>}
@@ -95,31 +93,24 @@ const VerticalTimeline = ({ items }: { items: any[] }) => (
     </div>
 );
 
-export const DoctorProfilePage = () => {
-    React.useEffect(() => {
-        window.scrollTo(0, 0);
-    }, []);
-
+export default function DoctorProfilePage() {
     return (
         <div className="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col antialiased">
             <NavbarCenlae activePage="perfil" />
 
             <main className="flex-grow">
-
-                {/* 1. HERO SECTION: Foto y Texto Centrado */}
+                {/* 1. HERO SECTION */}
                 <div className="bg-white pb-16 pt-10 md:pt-16">
                     <div className="container mx-auto px-4 max-w-7xl">
                         <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
-                            {/* --- IMAGEN (Izquierda) --- */}
-                            {/* Ajustado a w-1/2 para que sea más grande y balanceado con el texto */}
                             <motion.div
                                 initial={{ opacity: 0, x: -30 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.6 }}
                                 className="w-full md:w-1/2 flex justify-center md:justify-end"
                             >
-                                {/* max-w-lg permite que la imagen crezca más */}
                                 <div className="relative rounded-2xl overflow-hidden border border-gray-800 shadow-xl max-w-lg w-full">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                         src="https://static.wixstatic.com/media/3743a7_90a335f8fc184eac8b1a0df62401dba4~mv2.png/v1/crop/x_0,y_30,w_1086,h_522/fill/w_728,h_522,al_c,q_90,enc_avif,quality_auto/Dr%20Milton%20Mairena.png"
                                         alt="Dr. Milton A. Mairena Valle"
@@ -128,15 +119,12 @@ export const DoctorProfilePage = () => {
                                 </div>
                             </motion.div>
 
-                            {/* --- TEXTO (Derecha) --- */}
-
                             <motion.div
                                 initial={{ opacity: 0, x: 30 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.6, delay: 0.2 }}
                                 className="w-full md:w-1/2 text-center flex flex-col items-center"
                             >
-                                {/* Agregado whitespace-nowrap para forzar una sola línea */}
                                 <h1 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-[#003366] mb-6 tracking-tight whitespace-nowrap">
                                     Dr. Milton A. Mairena Valle
                                 </h1>
@@ -149,41 +137,28 @@ export const DoctorProfilePage = () => {
                                     ))}
                                 </div>
                             </motion.div>
-
                         </div>
                     </div>
                 </div>
 
-                {/* Contenedor centralizado y más angosto para corregir el ancho excesivo */}
                 <div className="container mx-auto px-4 max-w-5xl space-y-6 py-6">
-
-                    {/* 2. VISIÓN Y MISIÓN: Caja blanca más angosta dentro del fondo azul */}
+                    {/* 2. VISIÓN Y MISIÓN */}
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        // --- CAMBIO CLAVE AQUÍ ---
-                        // Antes tenía poco padding (p-2 o p-3).
-                        // Ahora usamos 'px-8 md:px-24' para darle mucho margen a los lados.
-                        // Usamos 'py-6' para mantenerla relativamente corta de alto.
                         className="rounded-3xl overflow-hidden shadow-xl bg-[#003366] py-6 px-8 md:px-30"
                     >
-                        {/* Caja Blanca Interna */}
-                        {/* Ajusté el padding interno y el redondeado para que se vea bien con el nuevo espacio externo */}
                         <div className="bg-white rounded-2xl py-8 px-6 text-center shadow-inner">
                             <div className="max-w-3xl mx-auto flex flex-col gap-6">
-                                {/* Visión */}
                                 <div>
                                     <h3 className="text-xl md:text-2xl font-bold text-[#003366] uppercase mb-2">
                                         VISIÓN
                                     </h3>
-                                    {/* max-w-xl ayuda a que el texto no se estire demasiado */}
                                     <p className="text-gray-900 font-medium leading-relaxed max-w-xl mx-auto text-sm md:text-base">
                                         Brindar a los pacientes la mejor calidad posible de atención medica en el campo de la Cirugía y Endoscopia Gastrointestinal
                                     </p>
                                 </div>
-
-                                {/* Misión */}
                                 <div>
                                     <h3 className="text-xl md:text-2xl font-bold text-[#003366] uppercase mb-2">
                                         MISIÓN
@@ -196,7 +171,7 @@ export const DoctorProfilePage = () => {
                         </div>
                     </motion.section>
 
-                    {/* 3. NÚMEROS: Caja con borde y botones azules */}
+                    {/* 3. NÚMEROS */}
                     <motion.section
                         initial={{ opacity: 0 }}
                         whileInView={{ opacity: 1 }}
@@ -208,21 +183,16 @@ export const DoctorProfilePage = () => {
                         </h3>
 
                         <div className="flex flex-col md:flex-row justify-center items-center gap-6">
-                            {/* Caja 1 */}
                             <div className="bg-[#003366] text-white py-4 px-6 rounded-lg text-center w-full md:w-64 shadow-md hover:scale-105 transition-transform">
                                 <span className="block text-2xl font-bold mb-1">+ 15</span>
                                 <span className="text-sm font-medium">Años de experiencia</span>
                             </div>
-
-                            {/* Caja 2 */}
                             <div className="bg-[#003366] text-white py-4 px-6 rounded-lg text-center w-full md:w-64 shadow-md hover:scale-105 transition-transform">
                                 <span className="block text-2xl font-bold mb-1">+ 8,000</span>
                                 <span className="text-sm font-medium">Procedimientos realizados</span>
                             </div>
                         </div>
                     </motion.section>
-
-
 
                     {/* 4. EXPERIENCIA LABORAL */}
                     <motion.section
@@ -235,17 +205,15 @@ export const DoctorProfilePage = () => {
                             <h3 className="text-2xl md:text-3xl font-bold tracking-widest uppercase">Experiencia Laboral</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 flex-grow">
-                            {/* Left: Image (Full Height Fix) */}
                             <div className="relative min-h-[400px] h-full bg-gray-900">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src="https://static.wixstatic.com/media/3743a7_f10bb11b6de74d199ebb7def67d6aa94~mv2.jpeg/v1/crop/x_509,y_0,w_478,h_724/fill/w_547,h_869,al_c,lg_1,q_85,enc_avif,quality_auto/3743a7_f10bb11b6de74d199ebb7def67d6aa94~mv2.jpeg"
                                     alt="Experiencia Quirúrgica"
                                     className="absolute inset-0 w-full h-full object-cover opacity-80 mix-blend-overlay md:mix-blend-normal md:opacity-100"
                                 />
-                                {/* Overlay para móvil para que el texto sea legible si decidieras ponerlo encima, aunque aquí está al lado */}
                                 <div className="absolute inset-0 bg-[#003366]/20 md:hidden"></div>
                             </div>
-                            {/* Right: Timeline */}
                             <div className="p-8 md:p-12 lg:p-16 flex items-center bg-[#003366]">
                                 <VerticalTimeline items={experienciaLaboral} />
                             </div>
@@ -263,12 +231,11 @@ export const DoctorProfilePage = () => {
                             <h3 className="text-2xl md:text-3xl font-bold tracking-widest uppercase">Formación Académica</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 flex-grow">
-                            {/* Left: Timeline (Desktop) */}
                             <div className="p-8 md:p-12 lg:p-16 flex items-center bg-[#003366] order-2 md:order-1">
                                 <VerticalTimeline items={formacionAcademica} />
                             </div>
-                            {/* Right: Image */}
                             <div className="relative min-h-[400px] h-full bg-gray-900 order-1 md:order-2">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src="https://static.wixstatic.com/media/3743a7_a889143c4ea74df69b1172b72aa4f59d~mv2.jpeg/v1/crop/x_281,y_0,w_350,h_768/fill/w_420,h_882,al_c,lg_1,q_85,enc_avif,quality_auto/213f1cc7-a54e-4035-b56f-5cee5b99ab17.jpeg"
                                     alt="Formación Académica"
@@ -294,6 +261,7 @@ export const DoctorProfilePage = () => {
                                     key={index}
                                     className="bg-white p-8 rounded-lg border-2 border-[#003366] shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col items-center justify-center min-h-[200px]"
                                 >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                         src={asoc.logo}
                                         alt={asoc.nombre}
@@ -315,6 +283,4 @@ export const DoctorProfilePage = () => {
             <FooterCenlae />
         </div>
     );
-};
-
-export default DoctorProfilePage;
+}
