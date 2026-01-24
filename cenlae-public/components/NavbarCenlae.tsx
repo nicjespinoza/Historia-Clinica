@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { Globe, ChevronDown, Menu, X } from 'lucide-react';
+import { DoctorAccessModal } from './DoctorAccessModal';
 
 interface NavbarCenlaeProps {
     activePage?: 'inicio' | 'perfil' | 'servicios' | 'contacto';
@@ -11,6 +12,7 @@ interface NavbarCenlaeProps {
 
 export const NavbarCenlae = ({ activePage = 'inicio' }: NavbarCenlaeProps) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
 
     const navLinks = [
         { name: 'Inicio', href: '/', id: 'inicio' },
@@ -37,14 +39,17 @@ export const NavbarCenlae = ({ activePage = 'inicio' }: NavbarCenlaeProps) => {
                         Keeping original behavior or pointing to Home? Usually Logo -> Home.
                         Let's point to Home for the public site. 
                     */}
-                    <Link href="/" className="flex-shrink-0 flex items-center -ml-2 sm:-ml-4 lg:-ml-8">
+                    <div
+                        onClick={() => setIsAccessModalOpen(true)}
+                        className="flex-shrink-0 flex items-center -ml-2 sm:-ml-4 lg:-ml-8 cursor-pointer hover:opacity-80 transition-opacity"
+                    >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                             src="https://static.wixstatic.com/media/3743a7_bc65d6328e9c443e95b330a92181fbc8~mv2.png/v1/crop/x_13,y_9,w_387,h_61/fill/w_542,h_85,al_c,lg_1,q_85,enc_avif,quality_auto/logo-drmairenavalle.png"
                             alt="Dr. Milton Mairena Valle - Endoscopia y Laparoscopia"
                             className="h-10 sm:h-12 lg:h-16 w-auto object-contain"
                         />
-                    </Link>
+                    </div>
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center space-x-8">
@@ -166,6 +171,11 @@ export const NavbarCenlae = ({ activePage = 'inicio' }: NavbarCenlaeProps) => {
                     </motion.div>
                 )}
             </AnimatePresence>
+            {/* Administrative Access Modal */}
+            <DoctorAccessModal
+                isOpen={isAccessModalOpen}
+                onClose={() => setIsAccessModalOpen(false)}
+            />
         </header>
     );
 };
