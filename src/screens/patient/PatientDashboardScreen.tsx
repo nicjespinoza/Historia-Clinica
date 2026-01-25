@@ -127,6 +127,34 @@ export const PatientDashboardScreen = () => {
         }
     }, [navigate, searchParams]);
 
+    // REAL-TIME PRESENCE LOGIC
+    useEffect(() => {
+        if (!patient?.id) return;
+
+        // 1. Set online on mount
+        api.updatePatient(patient.id, { isOnline: true }).catch(console.error);
+
+        // 2. Set offline on unmount
+        return () => {
+            api.updatePatient(patient.id, { isOnline: false }).catch(console.error);
+        };
+    }, [patient?.id]);
+
+    // 3. Handle tab close / refresh
+    useEffect(() => {
+        if (!patient?.id) return;
+
+        const handleBeforeUnload = () => {
+            // Best effort to set offline (navigator.sendBeacon would be better but keeps it simple)
+            // Note: firestore async writes might not complete on unload without keepalive, 
+            // but this covers SPA navigation.
+            api.updatePatient(patient.id, { isOnline: false });
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [patient?.id]);
+
     const handleLogout = async () => {
         try {
             await logout();
@@ -158,7 +186,7 @@ export const PatientDashboardScreen = () => {
             const updatedData = {
                 ...profileForm,
                 ageDetails,
-                ...(photoURL && { photoURL }),
+                ...(photoURL && { photoURL, profileImage: photoURL }),
                 registrationStatus: 'Proceso2',
                 registrationMessage: 'Pendiente Historia clínica'
             };

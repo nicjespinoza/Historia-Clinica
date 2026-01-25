@@ -101,6 +101,7 @@ export const DoctorDashboard = () => {
 
     return (
         <DoctorLayout onLogout={handleLogout} currentUser={currentUser ? currentUser.name : 'Doctor'}>
+
             <ErrorBoundary>
                 <AnimatePresence mode="wait">
                     <motion.div

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, Search, ArrowLeft, Trash2, AlertTriangle, X, MessageCircle, Activity } from 'lucide-react';
+import { Users, UserPlus, Search, ArrowLeft, Trash2, AlertTriangle, X, MessageCircle, Activity, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Patient } from '../../types';
 import { api } from '../../lib/api';
 import { GlassCard } from '../../components/premium-ui/GlassCard';
+import { useAuth } from '../../context/AuthContext';
 
 // No props needed anymore as it fetches its own data
 export const PatientListScreen = () => {
@@ -12,88 +13,16 @@ export const PatientListScreen = () => {
     const [loading, setLoading] = useState(true);
     const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
     const navigate = useNavigate();
+    const { hasPermission } = useAuth();
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 20;
-    const [lastDoc, setLastDoc] = useState<any>(null);
-    const [hasMore, setHasMore] = useState(true);
+    const ITEMS_PER_PAGE = 9;
 
-    // Initial Load - Optimized with Pagination
-    useEffect(() => {
-        loadInitialData();
-    }, []);
-
-    const loadInitialData = async () => {
-        try {
-            setLoading(true);
-            const paginated = await api.getPatientsPaginated(ITEMS_PER_PAGE);
-            setPatients(paginated.data);
-            setLastDoc(paginated.lastDoc);
-            setHasMore(paginated.hasMore);
-        } catch (error) {
-            console.error("Error loading patients:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const loadMore = async () => {
-        if (!hasMore || loading) return;
-        try {
-            // Don't set loading true here to avoid full screen spinner, maybe add local loading state
-            const paginated = await api.getPatientsPaginated(ITEMS_PER_PAGE, lastDoc);
-            setPatients(prev => [...prev, ...paginated.data]);
-            setLastDoc(paginated.lastDoc);
-            setHasMore(paginated.hasMore);
-        } catch (error) {
-            console.error("Error loading more patients:", error);
-        }
-    };
-
-    // Hybrid Search: If searching, we need to search across ALL patients or perform backend search.
-    // Given Firestore limitations, we'll revert to "Load All" strategy ONLY when searching.
-    useEffect(() => {
-        const handleSearch = async () => {
-            if (searchTerm.length >= 2) {
-                // Switch to "Active Search" mode - Load everything to client for filtering
-                try {
-                    // Check if we already have all data (optional optimization)
-                    // simplified: just fetch all
-                    const all = await api.getPatients(); // This is cached in API layer
-                    setPatients(all); // Replace current paginated list with FULL list for filtering
-                    setHasMore(false); // Disable pagination triggers while searching
-                } catch (e) {
-                    console.error("Search error", e);
-                }
-            } else if (searchTerm.length === 0 && patients.length > ITEMS_PER_PAGE * 2) {
-                // Return to paginated view if search cleared? 
-                // Or just keep the loaded list? Keeping it is smoother.
-                // But if we want to reset to save memory:
-                // loadInitialData(); 
-            }
-        };
-
-        const timeoutId = setTimeout(handleSearch, 500); // Debounce
-        return () => clearTimeout(timeoutId);
-    }, [searchTerm]);
-
-    const handleDelete = async () => {
-        if (!patientToDelete) return;
-        try {
-            await api.deletePatient(patientToDelete.id);
-            setPatients(prev => prev.filter(p => p.id !== patientToDelete.id));
-            setPatientToDelete(null);
-        } catch (error) {
-            console.error(error);
-            alert('Error al eliminar paciente');
-        }
-    };
-
-    // View Mode: 'active' | 'process'
+    // View Mode state (Restoring missing definition)
     const [viewMode, setViewMode] = useState<'active' | 'process'>('active');
 
-    // Vital Signs Modal State
+    // Vital Signs Modal State (Restoring missing definition)
     const [showVitalSignsModal, setShowVitalSignsModal] = useState(false);
     const [selectedPatientForVitals, setSelectedPatientForVitals] = useState<Patient | null>(null);
     const [vitalSigns, setVitalSigns] = useState({
@@ -154,9 +83,39 @@ export const PatientListScreen = () => {
         }
     };
 
-    // Filter logic works on CURRENT `patients` state.
-    // If searching, `patients` is ALL patients.
-    // If not searching, `patients` is Paginated subset.
+    // Delete Patient Function
+    const handleDelete = async () => {
+        if (!patientToDelete) return;
+        try {
+            await api.deletePatient(patientToDelete.id);
+            // Update local state
+            setPatients(prev => prev.filter(p => p.id !== patientToDelete.id));
+            setPatientToDelete(null);
+        } catch (error) {
+            console.error('Error deleting patient:', error);
+            alert('Hubo un error al eliminar el paciente.');
+        }
+    };
+
+    // Initial Load - Get ALL patients for client-side pagination (Better UX for < 2000 docs)
+    useEffect(() => {
+        loadInitialData();
+    }, []);
+
+    const loadInitialData = async () => {
+        try {
+            setLoading(true);
+            // Fetch ALL patients cached
+            const allPatients = await api.getPatients();
+            setPatients(allPatients);
+        } catch (error) {
+            console.error("Error loading patients:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Filter logic
     const filtered = patients.filter(p => {
         if (!searchTerm) {
             const status = p.registrationStatus || 'Paciente';
@@ -178,26 +137,18 @@ export const PatientListScreen = () => {
         }
     });
 
-    // Client-side pagination for the "Filtered Results" (Standard Table Pagination)
-    // We only apply this if we are in "Search Mode" (all patients loaded).
-    // If in "Paginated Mode" (loading from backend), we just show what we have.
+    // Client-side Pagination Logic
+    const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+    const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+    const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
 
-    // Actually, for simplicity, let's just render `filtered` directly if using Load More button
-    // OR we can keep the Page number for the local view.
-
-    // Let's change the UI to "Load More" style instead of "Page 1, 2, 3" for the main list,
-    // OR keep Page 1, 2, 3 but that only works if we have all data.
-
-    // DECISION: User expects simple list. Let's use Infinite Scroll / Load More for the main view.
-    // If searching, we show all results.
-
-    const currentItems = filtered; // Display all loaded/filtered items
-    const totalPages = 0; // Disable old pagination UI logic
-
-    // Reset page when search/tab changes
+    // Reset to page 1 when filters change
     useEffect(() => {
         setCurrentPage(1);
     }, [searchTerm, viewMode]);
+
+    const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
     if (loading) {
         return (
@@ -207,19 +158,12 @@ export const PatientListScreen = () => {
         );
     }
 
-
-    const startPage = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
-    const endPage = Math.min(totalPages, Math.max(5, currentPage + 2));
-    // Fix logic for edge cases where totalPages < 5
-    const safeStartPage = Math.max(1, startPage);
-    const safeEndPage = Math.min(totalPages, safeStartPage + 4);
-
     return (
         <div className="min-h-screen bg-[#084286] p-4 md:p-8">
             <div className="bg-white rounded-3xl p-4 md:p-10 max-w-7xl mx-auto shadow-2xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-6">
                     <h2 className="text-3xl font-bold text-[#084286] flex items-center gap-3">
-                        <Users className="text-[#084286]" /> Pacientes
+                        <Users className="text-[#084286]" /> Pacientes ({filtered.length})
                     </h2>
                     <div className="flex w-full md:w-auto gap-3">
                         <button
@@ -264,76 +208,130 @@ export const PatientListScreen = () => {
                     {currentItems.map(p => (
                         <div key={p.id} className="bg-white p-6 rounded-2xl shadow-sm border-2 border-black hover:shadow-md transition-all group relative overflow-hidden">
                             <div className="flex justify-between items-start">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="font-bold text-xl text-gray-900 group-hover:text-blue-600 transition-colors">{p.firstName} {p.lastName}</h3>
-                                        {p.registrationSource === 'online' ? (
-                                            <div className="flex items-center gap-2">
-                                                <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200">ONLINE</span>
-                                                <div
-                                                    className={`w-3 h-3 rounded-full border border-white shadow-sm ${p.isOnline ? 'bg-green-500 shadow-green-500/50' : 'bg-gray-300'}`}
-                                                    title={p.isOnline ? 'Conectado' : 'Desconectado'}
-                                                />
-                                            </div>
+                                <div className="flex items-center gap-4">
+                                    {/* Profile Image */}
+                                    <div className="w-12 h-12 rounded-full bg-gray-100 flex-shrink-0 overflow-hidden border border-gray-200">
+                                        {(p as any).profileImage ? (
+                                            <img
+                                                src={(p as any).profileImage}
+                                                alt={`${p.firstName} ${p.lastName}`}
+                                                className="w-full h-full object-cover"
+                                            />
                                         ) : (
-                                            <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-gray-200">MANUAL</span>
+                                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                <User size={24} />
+                                            </div>
                                         )}
                                     </div>
-                                    <p className="text-sm font-medium text-gray-500 mt-1">{p.ageDetails}</p>
-                                    <span className="text-[10px] font-bold tracking-wider text-gray-400 mt-3 inline-block bg-gray-50 px-2 py-1 rounded">ID: {p.id}</span>
-                                    {viewMode === 'process' && p.registrationStatus && (
-                                        <div className="mt-2 text-red-600 text-sm font-bold">
-                                            <p>
-                                                {p.registrationStatus === 'Proceso1' && 'Ficha clínica no completada'}
-                                                {p.registrationStatus === 'Proceso2' && 'Historia Clínica pendiente'}
-                                                {p.registrationStatus === 'Proceso3' && 'Signos vitales pendientes'}
-                                            </p>
-                                            {/* WhatsApp buttons for Proceso1 and Proceso2 */}
-                                            {(p.registrationStatus === 'Proceso1' || p.registrationStatus === 'Proceso2') && (
-                                                <a
-                                                    href={`https://wa.me/50587893709?text=${encodeURIComponent(
-                                                        p.registrationStatus === 'Proceso1'
-                                                            ? `Hola ${p.firstName} ${p.lastName}, hemos notado que te has registrado en nuestra plataforma médica y no has completado tu perfil clínico, me encantaría ayudarte con tus dudas.`
-                                                            : `Hola ${p.firstName} ${p.lastName}, hemos notado que todavía no has completado tu historia clínica, me encantaría ayudarte con tus dudas.`
-                                                    )}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="mt-2 inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-600 transition-colors shadow-md"
-                                                >
-                                                    <MessageCircle size={14} /> WhatsApp
-                                                </a>
-                                            )}
-                                            {/* Vital Signs button for Proceso3 */}
-                                            {p.registrationStatus === 'Proceso3' && (
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedPatientForVitals(p);
-                                                        setShowVitalSignsModal(true);
-                                                    }}
-                                                    className="mt-2 inline-flex items-center gap-1 bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-700 transition-colors shadow-md"
-                                                >
-                                                    <Activity size={14} /> Ingresar Signos Vitales
-                                                </button>
-                                            )}
+
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="font-bold text-xl text-gray-900 group-hover:text-blue-600 transition-colors">{p.firstName} {p.lastName}</h3>
                                         </div>
-                                    )}
-                                </div>
-                                <div className="flex flex-col gap-2">
+                                        <p className="text-sm font-medium text-gray-500 mt-1">{p.ageDetails}</p>
+                                        {p.legacyIdSistema ? (
+                                            <div className="flex items-center gap-2 mt-3">
+                                                <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200 tracking-wider">MIGRADO</span>
+                                                {hasPermission('patient:delete') && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPatientToDelete(p);
+                                                        }}
+                                                        className="p-1 text-[#084286] hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                                                        title="Eliminar paciente"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ) : p.registrationSource === 'online' ? (
+                                            <div className="flex items-center gap-2 mt-3">
+                                                <span className="text-[10px] font-bold tracking-wider text-gray-500">ONLINE</span>
+                                                {p.isOnline && (
+                                                    <div title="Conectado ahora" className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm shadow-green-500/50 animate-pulse"></div>
+                                                )}
+                                                {!p.isOnline && (
+                                                    <div title="Desconectado" className="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
+                                                )}
+                                                {hasPermission('patient:delete') && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPatientToDelete(p);
+                                                        }}
+                                                        className="ml-2 p-1 text-[#084286] hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                                                        title="Eliminar paciente"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 mt-3">
+                                                <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-gray-200 tracking-wider">MANUAL</span>
+                                                {hasPermission('patient:delete') && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPatientToDelete(p);
+                                                        }}
+                                                        className="p-1 text-[#084286] hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                                                        title="Eliminar paciente"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                        {viewMode === 'process' && p.registrationStatus && (
+                                            <div className="mt-2 text-red-600 text-sm font-bold">
+                                                <p>
+                                                    {p.registrationStatus === 'Proceso1' && 'Ficha clínica no completada'}
+                                                    {p.registrationStatus === 'Proceso2' && 'Historia Clínica pendiente'}
+                                                    {p.registrationStatus === 'Proceso3' && 'Signos vitales pendientes'}
+                                                </p>
+                                                {/* WhatsApp buttons for Proceso1 and Proceso2 */}
+                                                {(p.registrationStatus === 'Proceso1' || p.registrationStatus === 'Proceso2') && (
+                                                    <a
+                                                        href={`https://wa.me/50587893709?text=${encodeURIComponent(
+                                                            p.registrationStatus === 'Proceso1'
+                                                                ? `Hola ${p.firstName} ${p.lastName}, hemos notado que te has registrado en nuestra plataforma médica y no has completado tu perfil clínico, me encantaría ayudarte con tus dudas.`
+                                                                : `Hola ${p.firstName} ${p.lastName}, hemos notado que todavía no has completado tu historia clínica, me encantaría ayudarte con tus dudas.`
+                                                        )}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="mt-2 inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-600 transition-colors shadow-md"
+                                                    >
+                                                        <MessageCircle size={14} /> WhatsApp
+                                                    </a>
+                                                )}
+                                                {/* Vital Signs button for Proceso3 */}
+                                                {p.registrationStatus === 'Proceso3' && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedPatientForVitals(p);
+                                                            setShowVitalSignsModal(true);
+                                                        }}
+                                                        className="mt-2 inline-flex items-center gap-1 bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-700 transition-colors shadow-md"
+                                                    >
+                                                        <Activity size={14} /> Ingresar Signos Vitales
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                     <Link
                                         to={`/app/profile/${p.id}`}
-                                        className="bg-blue-50 text-blue-600 p-3 rounded-xl hover:bg-blue-600 hover:text-white transition-all text-center"
+                                        className="bg-blue-50 text-blue-600 p-3 rounded-xl hover:bg-blue-600 hover:text-white transition-all text-center group-hover:shadow-md"
                                     >
                                         <ArrowLeft className="rotate-180 mx-auto" size={20} />
                                     </Link>
-                                    <button
-                                        onClick={() => setPatientToDelete(p)}
-                                        className="bg-red-600 text-white p-3 rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
-                                    >
-                                        <Trash2 size={20} className="mx-auto" />
-                                    </button>
                                 </div>
+
                             </div>
                         </div>
+
                     ))}
                     {filtered.length === 0 && (
                         <div className="col-span-full text-center py-20">
@@ -345,14 +343,53 @@ export const PatientListScreen = () => {
                     )}
                 </div>
 
-                {/* Load More Button (Only visible when not searching and checks hasMore) */}
-                {!searchTerm && hasMore && (
-                    <div className="flex justify-center mt-8">
+                {/* Standard Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="flex justify-center mt-10 gap-2">
                         <button
-                            onClick={loadMore}
-                            className="bg-white border-2 border-[#084286] text-[#084286] px-8 py-3 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-md flex items-center gap-2"
+                            onClick={() => paginate(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className={`px-4 py-2 rounded-lg font-bold transition-all ${currentPage === 1
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-white border-2 border-[#084286] text-[#084286] hover:bg-blue-50'
+                                }`}
                         >
-                            Cargar más pacientes
+                            Anterior
+                        </button>
+
+                        <div className="flex gap-2">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                // Logic to show window of pages around current
+                                let pNum = i + 1;
+                                if (totalPages > 5) {
+                                    if (currentPage > 3) pNum = currentPage - 2 + i;
+                                    if (pNum > totalPages) pNum = i + (totalPages - 4);
+                                }
+
+                                return (
+                                    <button
+                                        key={pNum}
+                                        onClick={() => paginate(pNum)}
+                                        className={`w-10 h-10 rounded-lg font-bold transition-all ${currentPage === pNum
+                                            ? 'bg-[#084286] text-white shadow-lg shadow-blue-900/30 transform scale-105'
+                                            : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                                            }`}
+                                    >
+                                        {pNum}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <button
+                            onClick={() => paginate(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className={`px-4 py-2 rounded-lg font-bold transition-all ${currentPage === totalPages
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-white border-2 border-[#084286] text-[#084286] hover:bg-blue-50'
+                                }`}
+                        >
+                            Siguiente
                         </button>
                     </div>
                 )}
@@ -482,6 +519,6 @@ export const PatientListScreen = () => {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 };

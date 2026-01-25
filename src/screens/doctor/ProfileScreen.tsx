@@ -15,15 +15,19 @@ import { PatientHeader } from '../../components/profile/PatientHeader';
 import { PatientInfoCard } from '../../components/profile/PatientInfoCard';
 import { HistoryList } from '../../components/profile/HistoryList';
 import { ConsultList } from '../../components/profile/ConsultList';
+import { AssistantConsultModal } from '../../components/profile/AssistantConsultModal';
 
 const INPUT_CLASS = "w-full px-4 py-2.5 bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 block transition-all duration-200 outline-none placeholder-gray-400 hover:bg-white";
 
 import { uploadProfilePicture, validateFileSize, isImageFile } from '../../lib/storage';
+import { useAuth } from '../../context/AuthContext';
 
 // Props removed as it fetches its own data
 export const ProfileScreen = () => {
     const { patientId } = useParams<{ patientId: string }>();
     const navigate = useNavigate();
+    const { role, hasPermission } = useAuth();
+    const isAssistant = role === 'assistant';
 
     // Internal state for self-fetching
     const [patient, setPatient] = useState<Patient | null>(null);
@@ -44,6 +48,9 @@ export const ProfileScreen = () => {
     const [showVideoModal, setShowVideoModal] = useState(false);
     const [videoAppointment, setVideoAppointment] = useState<any>(null);
     const [creatingRoom, setCreatingRoom] = useState<string | null>(null);
+
+    // Assistant Modal State
+    const [showAssistantConsultModal, setShowAssistantConsultModal] = useState(false);
 
     // Notes feature state
     const [showNotesModal, setShowNotesModal] = useState(false);
@@ -445,64 +452,67 @@ export const ProfileScreen = () => {
                                         consults={patientConsults}
                                         navigate={navigate}
                                         onDelete={setDeleteConsultId}
+                                        onCreate={() => setShowAssistantConsultModal(true)}
                                     />
                                 </div>
 
-                                <div className="bg-[#083c79] rounded-xl p-6 text-white shadow-lg overflow-hidden relative">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                                    <div className="relative z-10">
-                                        <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
-                                            <span className="bg-white/20 p-1.5 rounded-lg">🧬</span> Diseñar Enfermedad
-                                        </h3>
-                                        <p className="text-blue-100 mb-4 text-sm max-w-md">
-                                            Utiliza nuestra herramienta de modelado 3D para visualizar y marcar áreas afectadas en el cuerpo humano.
-                                        </p>
-                                        <button
-                                            onClick={async () => {
-                                                try {
-                                                    const newSnap = await api.createSnapshot(patient.id);
-                                                    navigate(`/app/crearimagen/${patient.id}/${newSnap.id}`);
-                                                } catch (e) {
-                                                    alert('Error al crear nueva imagen');
-                                                }
-                                            }}
-                                            className="bg-white text-blue-900 px-6 py-2.5 rounded-lg font-bold hover:bg-blue-50 transition-colors shadow-lg flex items-center gap-2 mb-6"
-                                        >
-                                            <span>Crear imagen 3D</span>
-                                            <ArrowLeft className="rotate-180" size={18} />
-                                        </button >
+                                {!hasPermission('patient:delete') && !isAssistant ? (
+                                    <div className="bg-[#083c79] rounded-xl p-6 text-white shadow-lg overflow-hidden relative">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                                        <div className="relative z-10">
+                                            <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
+                                                <span className="bg-white/20 p-1.5 rounded-lg">🧬</span> Diseñar Enfermedad
+                                            </h3>
+                                            <p className="text-blue-100 mb-4 text-sm max-w-md">
+                                                Utiliza nuestra herramienta de modelado 3D para visualizar y marcar áreas afectadas en el cuerpo humano.
+                                            </p>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const newSnap = await api.createSnapshot(patient.id);
+                                                        navigate(`/app/crearimagen/${patient.id}/${newSnap.id}`);
+                                                    } catch (e) {
+                                                        alert('Error al crear nueva imagen');
+                                                    }
+                                                }}
+                                                className="bg-white text-blue-900 px-6 py-2.5 rounded-lg font-bold hover:bg-blue-50 transition-colors shadow-lg flex items-center gap-2 mb-6"
+                                            >
+                                                <span>Crear imagen 3D</span>
+                                                <ArrowLeft className="rotate-180" size={18} />
+                                            </button >
 
-                                        {
-                                            snapshots.length > 0 && (
-                                                <div className="space-y-3">
-                                                    <h4 className="font-bold text-sm text-blue-200 uppercase tracking-widest border-b border-white/20 pb-1 mb-2">Imágenes Guardadas</h4>
-                                                    {snapshots.map(snap => (
-                                                        <div key={snap.id} className="bg-white/10 p-3 rounded-lg border border-white/10 flex justify-between items-center group hover:bg-white/20 transition-colors">
-                                                            <div>
-                                                                <p className="font-bold text-sm">{snap.name}</p>
-                                                                <p className="text-xs text-blue-200">{new Date(snap.createdAt).toLocaleDateString()}</p>
+                                            {
+                                                snapshots.length > 0 && (
+                                                    <div className="space-y-3">
+                                                        <h4 className="font-bold text-sm text-blue-200 uppercase tracking-widest border-b border-white/20 pb-1 mb-2">Imágenes Guardadas</h4>
+                                                        {snapshots.map(snap => (
+                                                            <div key={snap.id} className="bg-white/10 p-3 rounded-lg border border-white/10 flex justify-between items-center group hover:bg-white/20 transition-colors">
+                                                                <div>
+                                                                    <p className="font-bold text-sm">{snap.name}</p>
+                                                                    <p className="text-xs text-blue-200">{new Date(snap.createdAt).toLocaleDateString()}</p>
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    <button
+                                                                        onClick={() => navigate(`/app/crearimagen/${patient.id}/${snap.id}`)}
+                                                                        className="bg-blue-500 hover:bg-blue-600 p-1.5 rounded-md transition-colors" title="Ver"
+                                                                    >
+                                                                        <Eye size={16} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setDeleteSnapshotId(snap.id)}
+                                                                        className="bg-red-500 hover:bg-red-600 p-1.5 rounded-md transition-colors" title="Eliminar"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex gap-2">
-                                                                <button
-                                                                    onClick={() => navigate(`/app/crearimagen/${patient.id}/${snap.id}`)}
-                                                                    className="bg-blue-500 hover:bg-blue-600 p-1.5 rounded-md transition-colors" title="Ver"
-                                                                >
-                                                                    <Eye size={16} />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => setDeleteSnapshotId(snap.id)}
-                                                                    className="bg-red-500 hover:bg-red-600 p-1.5 rounded-md transition-colors" title="Eliminar"
-                                                                >
-                                                                    <Trash2 size={16} />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )
-                                        }
+                                                        ))}
+                                                    </div>
+                                                )
+                                            }
+                                        </div >
                                     </div >
-                                </div >
+                                ) : null}
 
 
                             </div>
@@ -1316,6 +1326,99 @@ export const ProfileScreen = () => {
 
                 )
             }
+
+            {/* Delete Consult Confirmation Modal */}
+            {
+                deleteConsultId && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+                            {/* Red Header */}
+                            <div className="bg-red-600 px-6 py-5">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 p-3 rounded-full">
+                                        <AlertTriangle size={28} className="text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">⚠️ Eliminar Consulta</h3>
+                                        <p className="text-red-100 text-sm">Esta acción es irreversible</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-6">
+                                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-6">
+                                    <p className="text-red-800 font-medium mb-2">
+                                        ¿Está seguro de eliminar esta consulta médica?
+                                    </p>
+                                    <ul className="text-red-700 text-sm space-y-1">
+                                        <li>• Se eliminará permanentemente de la base de datos</li>
+                                        <li>• Incluye signos vitales, diagnósticos y recetas</li>
+                                    </ul>
+                                </div>
+
+                                {/* Buttons */}
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setDeleteConsultId(null)}
+                                        disabled={deletingHistory} // Reusing deletingHistory state or creating new one? Ideally new one but for now reusing safe enough or creating a local state would be better. But to avoid adding state definition, I will assume reusing deletingHistory is weird. I'll check if I added a state?
+                                        // Wait, I didn't add deletingConsult state. I should probably add it or just use deletingHistory if I don't want to edit the top of file.
+                                        // Actually, I should edit top of file to add deletingConsult state. Or just use a local var? No.
+                                        // I'll reuse deletingHistory for simplicity as they are mutually exclusive (modals block each other).
+                                        className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition disabled:opacity-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            if (!deleteConsultId || !patientId) return;
+                                            setDeletingHistory(true); // Reusing state
+                                            try {
+                                                await api.deleteConsult(deleteConsultId, patientId);
+                                                setConsults(prev => prev.filter(c => c.id !== deleteConsultId));
+                                                setDeleteConsultId(null);
+                                                alert('Consulta eliminada correctamente');
+                                            } catch (error) {
+                                                console.error('Error deleting consult:', error);
+                                                alert('Error al eliminar la consulta');
+                                            } finally {
+                                                setDeletingHistory(false);
+                                            }
+                                        }}
+                                        disabled={deletingHistory}
+                                        className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {deletingHistory ? (
+                                            <>
+                                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                Eliminando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Trash2 size={18} />
+                                                Sí, Eliminar
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Assistant Create Consult Modal */}
+            {showAssistantConsultModal && patient && (
+                <AssistantConsultModal
+                    patient={patient}
+                    onClose={() => setShowAssistantConsultModal(false)}
+                    onSave={(newConsult) => {
+                        setConsults(prev => [newConsult, ...prev]);
+                        setShowAssistantConsultModal(false);
+                        alert('Consulta creada correctamente. Pendiente de completar por el Doctor.');
+                    }}
+                />
+            )}
         </div >
     );
 };

@@ -65,16 +65,25 @@ export const YesNo = ({
 );
 
 export const PhysicalExamSection = ({
-    data, onChange
+    data, onChange, hideVitals = false
 }: {
-    data: PhysicalExam, onChange: (d: PhysicalExam) => void
+    data: PhysicalExam, onChange: (d: PhysicalExam) => void, hideVitals?: boolean
 }) => {
     const updateSystem = (sys: string, field: 'normal' | 'abnormal' | 'description', val: any) => {
+        let newData = { ...data.systems[sys], [field]: val };
+
+        // Mutually exclusive logic
+        if (field === 'normal' && val === true) {
+            newData.abnormal = false;
+        } else if (field === 'abnormal' && val === true) {
+            newData.normal = false;
+        }
+
         onChange({
             ...data,
             systems: {
                 ...data.systems,
-                [sys]: { ...data.systems[sys], [field]: val }
+                [sys]: newData
             }
         });
     };
@@ -83,18 +92,20 @@ export const PhysicalExamSection = ({
         <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
             <h3 className={SECTION_TITLE_CLASS}>V. Examen Físico</h3>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4 text-sm mb-8">
-                {['fc', 'fr', 'temp', 'pa', 'pam', 'sat02', 'weight', 'height', 'imc'].map(k => (
-                    <div key={k} className="flex flex-col">
-                        <label className="text-gray-500 text-[11px] uppercase font-bold mb-1.5 tracking-wider">{k}</label>
-                        <input
-                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none text-center font-medium font-mono"
-                            value={(data as any)[k]}
-                            onChange={(e) => onChange({ ...data, [k]: e.target.value })}
-                        />
-                    </div>
-                ))}
-            </div>
+            {!hideVitals && (
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4 text-sm mb-8">
+                    {['fc', 'fr', 'temp', 'pa', 'pam', 'sat02', 'weight', 'height', 'imc'].map(k => (
+                        <div key={k} className="flex flex-col">
+                            <label className="text-gray-500 text-[11px] uppercase font-bold mb-1.5 tracking-wider">{k}</label>
+                            <input
+                                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none text-center font-medium font-mono"
+                                value={(data as any)[k]}
+                                onChange={(e) => onChange({ ...data, [k]: e.target.value })}
+                            />
+                        </div>
+                    ))}
+                </div>
+            )}
 
             <div className="glass rounded-2xl overflow-hidden border border-white/20 shadow-lg">
                 <table className="w-full text-sm text-left">
@@ -121,12 +132,14 @@ export const PhysicalExamSection = ({
                                     </div>
                                 </td>
                                 <td className="p-4">
-                                    <input
-                                        className="w-full bg-transparent border-b border-gray-300 focus:border-[#154c8a] focus:outline-none text-gray-700 placeholder-gray-400 py-1 transition-colors"
-                                        placeholder="Describir hallazgos..."
-                                        value={data.systems[sys]?.description || ''}
-                                        onChange={e => updateSystem(sys, 'description', e.target.value)}
-                                    />
+                                    {data.systems[sys]?.abnormal && (
+                                        <input
+                                            className="w-full bg-transparent border-b border-gray-300 focus:border-[#154c8a] focus:outline-none text-gray-700 placeholder-gray-400 py-1 transition-colors"
+                                            placeholder="Describir hallazgos..."
+                                            value={data.systems[sys]?.description || ''}
+                                            onChange={e => updateSystem(sys, 'description', e.target.value)}
+                                        />
+                                    )}
                                 </td>
                             </tr>
                         ))}

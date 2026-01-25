@@ -21,6 +21,7 @@ try {
 const SERVICE_ACCOUNT_PATH = path.join(__dirname, 'data', 'serviceAccountKey.json');
 const PACIENTES_FILE = path.join(__dirname, 'data', 'wix_pacientes.json');
 const EVOLUCION_FILE = path.join(__dirname, 'data', 'wix_evolucion.json');
+const NOTAS_FILE = path.join(__dirname, 'data', 'wix_notas.json');
 
 // Inicializar Firebase Admin
 let serviceAccount;
@@ -130,6 +131,28 @@ function parseDate(dateString) {
     return admin.firestore.Timestamp.fromDate(date);
 }
 
+function parseWixImage(wixString) {
+    if (!wixString) return '';
+    // Format: wix:image://v1/FILENAME/TITLE#dimensions
+    // Target: https://static.wixstatic.com/media/FILENAME
+    try {
+        if (wixString.startsWith('wix:image://')) {
+            const parts = wixString.split('/');
+            // parts[0] = wix:image:
+            // parts[1] = 
+            // parts[2] = v1
+            // parts[3] = FILENAME
+            if (parts.length >= 4) {
+                const filename = parts[3].split('/')[0].split('#')[0]; // Handle cases where / or # follows
+                return `https://static.wixstatic.com/media/${filename}`;
+            }
+        }
+        return wixString;
+    } catch (e) {
+        return '';
+    }
+}
+
 // ============================================================================
 // GESTOR DE LOTES
 // ============================================================================
@@ -202,28 +225,49 @@ async function cleanDatabase() {
 // MIGRACIÓN V4
 // ============================================================================
 async function migrate() {
-    console.log("🚀 Iniciando script de migración V4 (Fixed UI Mappings)...");
+    console.log("🚀 Iniciando script de migración V4 (Fixed UI Mappings + Notes)...");
 
     await cleanDatabase();
 
     const batchManager = new BatchManager(db);
     let wixPacientes = [];
     let wixEvolucion = [];
+    let wixNotas = [];
 
     try {
         const rawPacientes = fs.readFileSync(PACIENTES_FILE, 'utf8');
         const rawEvolucion = fs.readFileSync(EVOLUCION_FILE, 'utf8');
+        const rawNotas = fs.readFileSync(NOTAS_FILE, 'utf8');
+
         wixPacientes = JSON.parse(rawPacientes);
         if (!Array.isArray(wixPacientes) && wixPacientes.results) wixPacientes = wixPacientes.results;
 
         wixEvolucion = JSON.parse(rawEvolucion);
         if (!Array.isArray(wixEvolucion) && wixEvolucion.results) wixEvolucion = wixEvolucion.results;
 
-        console.log(`📄 Archivos cargados: ${wixPacientes.length} pacientes, ${wixEvolucion.length} evoluciones.`);
+        wixNotas = JSON.parse(rawNotas);
+        if (!Array.isArray(wixNotas) && wixNotas.results) wixNotas = wixNotas.results;
+
+        console.log(`📄 Archivos cargados: ${wixPacientes.length} pacientes, ${wixEvolucion.length} evoluciones, ${wixNotas.length} notas.`);
     } catch (e) {
         console.error("❌ Error leyendo archivos JSON:", e.message);
         process.exit(1);
     }
+
+    // MAP NOTES BY PATIENT ID (Using Idunico as requested)
+    const notesMap = {};
+    wixNotas.forEach(note => {
+        // Use Idunico (M-XXXX) for linking if available, otherwise Idpaciente
+        const linkKey = cleanString(note.Idunico) || note.Idpaciente;
+        if (!linkKey) return;
+
+        if (!notesMap[linkKey]) notesMap[linkKey] = [];
+        notesMap[linkKey].push({
+            id: note.ID || randomUUID(),
+            text: cleanString(note.Notas),
+            createdAt: note['Created Date'] || new Date().toISOString()
+        });
+    });
 
     console.log("\n--- Migrando perfiles de pacientes ---");
     let processedPatients = 0;
@@ -246,6 +290,10 @@ async function migrate() {
             // El usuario quiere ver M-83756
             const preferredId = cleanString(p.idunico) || cleanString(p.Idsistema);
 
+            // Get Notes for this patient
+            // Try matching by Preferred ID (M-XXXX) first, then by UUID
+            const patientNotes = notesMap[preferredId] || notesMap[patientId] || [];
+
             const patientData = {
                 legacyIdSistema: preferredId, // Use preferred ID for display
                 firstName: firstName,
@@ -262,8 +310,11 @@ async function migrate() {
                 registrationSource: registrationSource,
                 registrationStatus: cleanString(p.Registrarcliente), // CORRECTED: Uppercase 'R' matches JSON
                 isOnline: isOnlineUser,
+                profileImage: parseWixImage(p.Perfil),
+                notes: patientNotes, // MAPPED NOTES ARRAY
                 searchIndex: [firstName.toLowerCase(), lastName.toLowerCase()]
             };
+
 
             await batchManager.setWithId('patients', patientId, patientData);
 

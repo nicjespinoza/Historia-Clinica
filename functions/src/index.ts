@@ -4,6 +4,7 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { defineSecret, defineString } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import Stripe from "stripe";
+import * as nodemailer from "nodemailer";
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -820,6 +821,17 @@ export const scheduleEndoscopicReminders = onCall(
  * Daily scheduled function to send pending email reminders
  * Runs every day at 8:00 AM
  */
+
+// Initialize Nodemailer Transporter
+// Note: Ideally use OAuth2 or a transactional email service (SendGrid, Mailgun) for production
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD // Ensure this env var is set in Firebase functions config
+    }
+});
+
 export const sendEndoscopicReminders = onSchedule(
     {
         schedule: "0 8 * * *", // Every day at 8:00 AM

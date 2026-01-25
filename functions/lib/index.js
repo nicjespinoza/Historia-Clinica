@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkEmailAvailability = exports.getDashboardAdvancedStats = exports.generateAIAnalysis = exports.sendAppointmentReminders = exports.tilopayWebhook = exports.stripeWebhook = exports.initiatePayment = exports.createPaymentIntent = exports.baseUrl = exports.ROLE_NAMES = exports.ASSIGNABLE_ROLES = exports.isTokenExpired = exports.isPrivileged = exports.isAdmin = exports.getUserRole = exports.setUserRole = exports.logMedicalRecordDeletion = exports.logPaymentEvent = exports.createAuditLog = exports.restoreFromBackup = exports.getBackupHistory = exports.triggerManualBackup = exports.scheduledBackup = exports.toggleUserStatus = exports.listUsers = exports.getAuditStats = exports.getAuditLogs = exports.checkTokenExpiration = exports.forceLogout = exports.renewToken = exports.revokeRole = exports.assignUserRole = exports.processTiloPayPayment = exports.powertranzCallback = exports.verifyPowerTranzPayment = exports.processPowerTranzPayment = void 0;
+exports.sendEndoscopicReminders = exports.scheduleEndoscopicReminders = exports.checkEmailAvailability = exports.getDashboardAdvancedStats = exports.generateAIAnalysis = exports.sendAppointmentReminders = exports.tilopayWebhook = exports.stripeWebhook = exports.initiatePayment = exports.createPaymentIntent = exports.baseUrl = exports.ROLE_NAMES = exports.ASSIGNABLE_ROLES = exports.isTokenExpired = exports.isPrivileged = exports.isAdmin = exports.getUserRole = exports.setUserRole = exports.logMedicalRecordDeletion = exports.logPaymentEvent = exports.createAuditLog = exports.restoreFromBackup = exports.getBackupHistory = exports.triggerManualBackup = exports.scheduledBackup = exports.toggleUserStatus = exports.listUsers = exports.getAuditStats = exports.getAuditLogs = exports.checkTokenExpiration = exports.forceLogout = exports.renewToken = exports.revokeRole = exports.assignUserRole = exports.processTiloPayPayment = exports.powertranzCallback = exports.verifyPowerTranzPayment = exports.processPowerTranzPayment = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const params_1 = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const stripe_1 = require("stripe");
+const nodemailer = require("nodemailer");
 // Initialize Firebase Admin
 admin.initializeApp();
 // Export PowerTranz payment functions
@@ -568,6 +569,140 @@ exports.checkEmailAvailability = (0, https_1.onCall)(async (request) => {
     catch (error) {
         console.error("Error checking email availability:", error);
         throw new https_1.HttpsError("internal", "Error verificando disponibilidad del email.");
+    }
+});
+// ============================================================
+// ENDOSCOPIC CONTROL REMINDERS
+// ============================================================
+/**
+ * Store scheduled endoscopic reminders
+ * Called when doctor creates a new endoscopic control
+ */
+exports.scheduleEndoscopicReminders = (0, https_1.onCall)(async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Debe iniciar sesión para programar recordatorios.");
+    }
+    const { patientId, patientName, patientEmail, controlDate, notes, reminders } = request.data;
+    if (!patientId || !patientEmail || !controlDate || !reminders) {
+        throw new https_1.HttpsError("invalid-argument", "Faltan datos requeridos para programar recordatorios.");
+    }
+    try {
+        // Store reminders in a scheduled_reminders collection for the daily job
+        const batch = admin.firestore().batch();
+        for (const reminder of reminders) {
+            const reminderRef = admin.firestore().collection("scheduled_reminders").doc();
+            batch.set(reminderRef, {
+                type: "endoscopic_control",
+                patientId,
+                patientName,
+                patientEmail,
+                controlDate,
+                notes: notes || "",
+                scheduledDate: reminder.date,
+                reminderType: reminder.type,
+                sent: false,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdBy: request.auth.uid
+            });
+        }
+        await batch.commit();
+        console.log(`Scheduled ${reminders.length} reminders for patient ${patientId}`);
+        return {
+            success: true,
+            remindersScheduled: reminders.length
+        };
+    }
+    catch (error) {
+        console.error("Error scheduling reminders:", error);
+        throw new https_1.HttpsError("internal", "Error al programar recordatorios.");
+    }
+});
+/**
+ * Daily scheduled function to send pending email reminders
+ * Runs every day at 8:00 AM
+ */
+// Initialize Nodemailer Transporter
+// Note: Ideally use OAuth2 or a transactional email service (SendGrid, Mailgun) for production
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD // Ensure this env var is set in Firebase functions config
+    }
+});
+exports.sendEndoscopicReminders = (0, scheduler_1.onSchedule)({
+    schedule: "0 8 * * *", // Every day at 8:00 AM
+    timeZone: "America/Managua"
+}, async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
+    try {
+        // Find all unsent reminders scheduled for today
+        const remindersSnapshot = await admin.firestore()
+            .collection("scheduled_reminders")
+            .where("sent", "==", false)
+            .where("scheduledDate", ">=", today.toISOString())
+            .where("scheduledDate", "<=", todayEnd.toISOString())
+            .get();
+        console.log(`Found ${remindersSnapshot.size} reminders to send`);
+        for (const doc of remindersSnapshot.docs) {
+            const reminder = doc.data();
+            try {
+                // Send email using nodemailer
+                const controlDateFormatted = new Date(reminder.controlDate).toLocaleDateString("es-NI", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric"
+                });
+                const daysUntil = Math.ceil((new Date(reminder.controlDate).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                const emailHtml = `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                            <div style="background: linear-gradient(135deg, #0d9488, #14b8a6); padding: 30px; border-radius: 15px 15px 0 0; text-align: center;">
+                                <h1 style="color: white; margin: 0;">🔔 Recordatorio de Control Endoscópico</h1>
+                            </div>
+                            <div style="background: #f0fdfa; padding: 30px; border: 2px solid #99f6e4; border-radius: 0 0 15px 15px;">
+                                <p style="font-size: 18px; color: #0f766e;">Estimado(a) <strong>${reminder.patientName}</strong>,</p>
+                                <p style="font-size: 16px; color: #333;">Le recordamos que tiene programado un <strong>Control Endoscópico</strong> para:</p>
+                                <div style="background: white; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0; border: 2px solid #14b8a6;">
+                                    <p style="font-size: 24px; font-weight: bold; color: #0d9488; margin: 0;">${controlDateFormatted}</p>
+                                    <p style="color: #666; margin-top: 10px;">(en ${daysUntil} días)</p>
+                                </div>
+                                ${reminder.notes ? `
+                                <div style="background: #fff7ed; padding: 15px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #f97316;">
+                                    <p style="margin: 0; font-weight: bold; color: #c2410c;">📝 Notas del Doctor:</p>
+                                    <p style="margin: 10px 0 0 0; color: #333;">${reminder.notes}</p>
+                                </div>
+                                ` : ""}
+                                <p style="font-size: 14px; color: #666;">Por favor contacte a la clínica si necesita reprogramar o tiene alguna consulta.</p>
+                                <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+                                <p style="font-size: 12px; color: #999; text-align: center;">Este es un mensaje automático. Por favor no responda a este correo.</p>
+                            </div>
+                        </div>
+                    `;
+                await transporter.sendMail({
+                    from: `"Sistema de Historia Clínica" <${process.env.EMAIL_USER || "noreply@historiaclinica.com"}>`,
+                    to: reminder.patientEmail,
+                    subject: `🔔 Recordatorio: Control Endoscópico en ${daysUntil} días`,
+                    html: emailHtml
+                });
+                // Mark as sent
+                await doc.ref.update({
+                    sent: true,
+                    sentAt: admin.firestore.FieldValue.serverTimestamp()
+                });
+                console.log(`Sent reminder to ${reminder.patientEmail}`);
+            }
+            catch (emailError) {
+                console.error(`Error sending email to ${reminder.patientEmail}:`, emailError);
+            }
+        }
+        console.log("Daily reminder job completed");
+    }
+    catch (error) {
+        console.error("Error in sendEndoscopicReminders:", error);
     }
 });
 //# sourceMappingURL=index.js.map

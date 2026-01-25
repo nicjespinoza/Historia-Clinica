@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "medirecord-pro-c84d0"
-  }
+  },
+  "targets": {
+    "medirecord-pro-c84d0": {
+      "hosting": {
+        "medirecord-pro-c84d0": [
+          "medirecord-pro-c84d0"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

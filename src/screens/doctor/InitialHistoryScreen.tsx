@@ -1,6 +1,6 @@
-import React, { useState, useCallback, memo, useEffect } from 'react';
-import { Save, ArrowLeft } from 'lucide-react';
-import { Patient, InitialHistory } from '../../types';
+import React, { useState, useCallback, memo, useEffect, useMemo } from 'react';
+import { Save, ArrowLeft, WifiOff, AlertCircle, Trash2, Plus } from 'lucide-react';
+import { Patient, InitialHistory, MedicalOrder } from '../../types';
 import * as C from '../../constants';
 import { api } from '../../lib/api';
 import { CheckboxList, YesNo, PhysicalExamSection } from '../../components/ui/FormComponents';
@@ -12,7 +12,105 @@ import { useForm, Controller, FormProvider, useFormContext, useWatch } from 'rea
 import { zodResolver } from '@hookform/resolvers/zod';
 import { initialHistorySchema, InitialHistoryFormData, getDefaultInitialHistoryValues } from '../../schemas/patientSchemas';
 
+const INPUT_CLASS = "w-full px-4 py-2.5 bg-gray-50 border-2 border-black text-gray-800 text-sm rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 block transition-all duration-200 outline-none placeholder-gray-400 hover:bg-white";
 const SECTION_TITLE_CLASS = "text-xl font-bold text-gray-800 mb-6 flex items-center gap-2";
+
+const PANEL_BASICO_PRESET = `1. BHC
+2. Glicemina
+3. Creatimina
+4. TP, TP, INR
+5. Examen General de Orina
+6. Tipo y PH`;
+
+const PANEL_AMPLIADO_PRESET = `1. BHC
+2. Glicemina
+3. Hemoglobina Glicesilada A1C
+4. Creatimina
+5. Perful Hepatico
+6. Perfil Hipidico
+7. Perfil Tiroideo
+8. Ionograma
+9. Vitamina D3
+10. Vitamina B12
+11. Examen de Orina (360)
+12. Ferritina
+13. LDH
+14. Acido Urico
+15. V56
+16. TPT
+17. Tipo y RH`;
+
+const PANEL_HECES_PRESET = `1. Citologia Fecal
+2. Tincion de Kinyoun
+3. Copuocultivo`;
+
+// Validation helper
+const validateVitalSigns = (physicalExam: any): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    if (physicalExam.fc) {
+        const fc = parseFloat(physicalExam.fc);
+        if (isNaN(fc) || fc < 40 || fc > 200) errors.push('FC debe estar entre 40-200 lpm');
+    }
+    if (physicalExam.fr) {
+        const fr = parseFloat(physicalExam.fr);
+        if (isNaN(fr) || fr < 8 || fr > 40) errors.push('FR debe estar entre 8-40 rpm');
+    }
+    if (physicalExam.temp) {
+        const temp = parseFloat(physicalExam.temp);
+        if (isNaN(temp) || temp < 34 || temp > 42) errors.push('Temperatura debe estar entre 34-42°C');
+    }
+    if (physicalExam.sat02) {
+        const sat = parseFloat(physicalExam.sat02);
+        if (isNaN(sat) || sat < 70 || sat > 100) errors.push('SatO2 debe estar entre 70-100%');
+    }
+    if (physicalExam.weight) {
+        const weight = parseFloat(physicalExam.weight);
+        if (isNaN(weight) || weight < 1 || weight > 500) errors.push('Peso debe estar entre 1-500 kg');
+    }
+    if (physicalExam.height) {
+        const height = parseFloat(physicalExam.height);
+        if (isNaN(height) || height < 30 || height > 250) errors.push('Altura debe estar entre 30-250 cm');
+    }
+    return { valid: errors.length === 0, errors };
+};
+
+const Section = ({ title, children, className = "" }: { title: string, children?: React.ReactNode, className?: string }) => (
+    <div className={`bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8 ${className}`}>
+        <h3 className={SECTION_TITLE_CLASS}>{title}</h3>
+        {children}
+    </div>
+);
+
+const NumericInput = ({
+    label, value, onChange, min, max, step = "1", unit = "", placeholder = "", isOnline = true
+}: {
+    label: string; value: string; onChange: (v: string) => void;
+    min?: number; max?: number; step?: string; unit?: string; placeholder?: string; isOnline?: boolean;
+}) => {
+    const baseClass = isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500');
+    return (
+        <div className="flex-1">
+            <label className="block text-xs uppercase font-bold text-gray-500 mb-1">{label}</label>
+            <div className="relative">
+                <input
+                    type="number"
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={value}
+                    onChange={e => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    className={`${baseClass} ${unit ? 'pr-12' : ''}`}
+                />
+                {unit && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                        {unit}
+                    </span>
+                )}
+            </div>
+        </div>
+    );
+};
 
 // Memoized Section Component to prevent re-renders
 const MemoizedSection = memo(({ title, children, className = "" }: { title: string, children?: React.ReactNode, className?: string }) => (
@@ -259,6 +357,118 @@ export const InitialHistoryScreen = () => {
     const orders = watch('orders');
     const physicalExam = watch('physicalExam');
 
+    const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+    // Calcular IMC automáticamente
+    const currentWeight = watch('physicalExam.weight');
+    const currentHeight = watch('physicalExam.height');
+
+    const calculatedImc = useMemo(() => {
+        const weight = parseFloat(currentWeight);
+        const heightCm = parseFloat(currentHeight);
+        if (weight > 0 && heightCm > 0) {
+            const heightM = heightCm / 100;
+            return (weight / (heightM * heightM)).toFixed(1);
+        }
+        return '';
+    }, [currentWeight, currentHeight]);
+
+    useEffect(() => {
+        const currentImc = getValues('physicalExam.imc');
+        if (calculatedImc && calculatedImc !== currentImc) {
+            setValue('physicalExam.imc', calculatedImc, { shouldValidate: true });
+        }
+    }, [calculatedImc, setValue, getValues]);
+
+    const getIMCClassification = (imc: number): string => {
+        if (imc < 18.5) return 'Bajo peso';
+        if (imc < 25) return 'Peso normal';
+        if (imc < 30) return 'Sobrepeso';
+        if (imc < 35) return 'Obesidad de clase I';
+        if (imc < 40) return 'Obesidad de clase II';
+        return 'Obesidad de clase III (mórbida)';
+    };
+
+    // --- Logic for Lists (Diagnoses, Treatment, Orders) ---
+
+    // Diagnoses
+    const currentDiagnoses = watch('diagnoses') || [];
+
+    const handleDiagnosisChange = (index: number, value: string) => {
+        const newD = [...currentDiagnoses];
+        newD[index] = value;
+        setValue('diagnoses', newD, { shouldDirty: true });
+    };
+
+    const addDiagnosis = () => {
+        setValue('diagnoses', [...currentDiagnoses, ''], { shouldDirty: true });
+    };
+
+    const removeDiagnosis = (index: number) => {
+        const newD = currentDiagnoses.filter((_, i) => i !== index);
+        setValue('diagnoses', newD, { shouldDirty: true });
+    };
+
+    // Treatment Arrays
+    const currentTreatment = watch('treatment');
+
+    // Ensure they are arrays (backward compatibility if string)
+    const getTreatmentArray = (field: 'meds' | 'exams' | 'norms') => {
+        const val = currentTreatment?.[field];
+        if (Array.isArray(val)) return val;
+        return val ? [val as string] : [''];
+    };
+
+    const handleTreatmentChange = (field: 'meds' | 'exams' | 'norms', index: number, value: string) => {
+        const arr = getTreatmentArray(field);
+        const newArr = [...arr];
+        newArr[index] = value;
+        setValue(`treatment.${field}`, newArr, { shouldDirty: true });
+    };
+
+    const addTreatmentItem = (field: 'meds' | 'exams' | 'norms') => {
+        const arr = getTreatmentArray(field);
+        setValue(`treatment.${field}`, [...arr, ''], { shouldDirty: true });
+    };
+
+    // Medical Orders
+    const currentOrders = watch('medicalOrders') || [];
+
+    const addMedicalOrder = (
+        type: 'prescription' | 'lab_general' | 'lab_basic' | 'lab_extended' | 'lab_feces' | 'image' | 'endoscopy',
+        defaultContent: string = ''
+    ) => {
+        const newOrder: MedicalOrder = {
+            id: Date.now().toString() + Math.random().toString(),
+            type,
+            diagnosis: '',
+            content: defaultContent
+        };
+        setValue('medicalOrders', [...currentOrders, newOrder], { shouldDirty: true });
+    };
+
+    const updateMedicalOrder = (id: string, field: 'diagnosis' | 'content', value: string) => {
+        const newOrders = currentOrders.map(o => o.id === id ? { ...o, [field]: value } : o);
+        setValue('medicalOrders', newOrders, { shouldDirty: true });
+    };
+
+    const removeMedicalOrder = (id: string) => {
+        const newOrders = currentOrders.filter(o => o.id !== id);
+        setValue('medicalOrders', newOrders, { shouldDirty: true });
+    };
+    // Offline State
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
     // Reset form when history from navigation state changes or fetch if missing
     useEffect(() => {
         const fetchHistoryIfNeeded = async () => {
@@ -310,6 +520,16 @@ export const InitialHistoryScreen = () => {
 
     const onSubmit = async (data: InitialHistoryFormData) => {
         if (!patient) return;
+
+        // Validation
+        const validation = validateVitalSigns(data.physicalExam);
+        if (!validation.valid) {
+            setValidationErrors(validation.errors);
+            showToast("Por favor corrija los errores en signos vitales", 'error');
+            return;
+        }
+        setValidationErrors([]);
+
         try {
             // Remove undefined values before sending to Firebase
             const cleanData = Object.fromEntries(
@@ -761,35 +981,129 @@ export const InitialHistoryScreen = () => {
                         <GroupSectionRHF title="Generales" list={C.FAMILY_LIST} groupKey="familyHistory" />
                     </MemoizedSection>
 
-                    <PhysicalExamSection
-                        data={watch('physicalExam')}
-                        onChange={(d) => setValue('physicalExam', d)}
-                    />
-
-                    <div className="p-6 rounded-xl shadow-sm border border-gray-200 mt-8 mb-24 bg-white">
-                        <h3 className={SECTION_TITLE_CLASS}>VI. Diagnóstico</h3>
-                        <div className="mt-4">
-                            <Controller
-                                name="diagnosis"
-                                control={control}
-                                render={({ field }) => (
-                                    <FloatingLabelInput
-                                        label="Detalle del Diagnóstico"
-                                        as="textarea"
-                                        rows={6}
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
-                                    />
-                                )}
+                    {/* V. EXAMEN FÍSICO (Grid Numérico) */}
+                    <Section title="V. Signos Vitales">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <NumericInput
+                                label="FC"
+                                value={physicalExam.fc}
+                                onChange={v => setValue('physicalExam.fc', v, { shouldDirty: true })}
+                                min={40} max={200} unit="lpm" placeholder="60-100"
+                                isOnline={isOnline}
+                            />
+                            <NumericInput
+                                label="FR"
+                                value={physicalExam.fr}
+                                onChange={v => setValue('physicalExam.fr', v, { shouldDirty: true })}
+                                min={8} max={40} unit="rpm" placeholder="12-20"
+                                isOnline={isOnline}
+                            />
+                            <NumericInput
+                                label="Temperatura"
+                                value={physicalExam.temp}
+                                onChange={v => setValue('physicalExam.temp', v, { shouldDirty: true })}
+                                min={34} max={42} step="0.1" unit="°C" placeholder="36.5"
+                                isOnline={isOnline}
+                            />
+                            <NumericInput
+                                label="SatO2"
+                                value={physicalExam.sat02}
+                                onChange={v => setValue('physicalExam.sat02', v, { shouldDirty: true })}
+                                min={70} max={100} unit="%" placeholder="95-100"
+                                isOnline={isOnline}
                             />
                         </div>
-                    </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                            <FloatingLabelInput
+                                label="PA (mmHg)"
+                                value={physicalExam.pa}
+                                onChange={e => setValue('physicalExam.pa', e.target.value, { shouldDirty: true })}
+                                placeholder="120/80"
+                                wrapperClassName={`border-2 ${isOnline ? 'border-black' : 'border-red-500'}`}
+                            />
+                            <FloatingLabelInput
+                                label="PAM (mmHg)"
+                                value={physicalExam.pam}
+                                onChange={e => setValue('physicalExam.pam', e.target.value, { shouldDirty: true })}
+                                placeholder="93"
+                                wrapperClassName={`border-2 ${isOnline ? 'border-black' : 'border-red-500'}`}
+                            />
+                            <NumericInput
+                                label="Peso"
+                                value={physicalExam.weight}
+                                onChange={v => setValue('physicalExam.weight', v, { shouldDirty: true })}
+                                min={1} max={500} step="0.1" unit="kg" placeholder="70"
+                            />
+                            <NumericInput
+                                label="Altura"
+                                value={physicalExam.height}
+                                onChange={v => setValue('physicalExam.height', v, { shouldDirty: true })}
+                                min={30} max={250} unit="cm" placeholder="170"
+                            />
+                        </div>
+                        <div className="mt-4 flex flex-wrap items-center gap-4">
+                            <div className="p-3 bg-blue-50 rounded-lg flex items-center gap-2">
+                                <span className="text-blue-700 font-bold">IMC:</span>
+                                <span className="text-blue-600">{physicalExam.imc || '-'} kg/m²</span>
+                            </div>
+                            {physicalExam.imc && (
+                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                    <p className="text-blue-800 font-bold text-sm flex items-center gap-2">
+                                        <AlertCircle size={16} />
+                                        {getIMCClassification(parseFloat(physicalExam.imc))}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </Section>
 
-                    {/* VII. Plan y Tratamiento */}
-                    <MemoizedSection title="VII. Plan y Tratamiento">
-                        {/* 1. Estudios Previos */}
-                        <div className="mb-8">
+                    {/* Examen por Sistemas (Tabla sin vitales) */}
+                    <PhysicalExamSection
+                        data={watch('physicalExam')}
+                        onChange={(d) => setValue('physicalExam', d, { shouldDirty: true })}
+                        hideVitals={true}
+                    />
+
+                    {/* VI. Diagnóstico (Lista Dinámica) */}
+                    <Section title="VI. Diagnóstico">
+                        <div className="space-y-3">
+                            {currentDiagnoses.map((dx, i) => (
+                                <div key={i} className="flex items-center gap-3">
+                                    <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
+                                        {i + 1}
+                                    </span>
+                                    <input
+                                        type="text"
+                                        value={dx}
+                                        onChange={e => handleDiagnosisChange(i, e.target.value)}
+                                        placeholder={`Diagnóstico ${i + 1}`}
+                                        className={isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500')}
+                                    />
+                                    {currentDiagnoses.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => removeDiagnosis(i)}
+                                            className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={addDiagnosis}
+                                className="text-blue-600 font-bold text-sm hover:underline flex items-center gap-1 mt-2"
+                            >
+                                <Plus size={16} /> Agregar diagnóstico
+                            </button>
+                        </div>
+                    </Section>
+
+                    {/* VII. Plan de Tratamiento */}
+                    <Section title="VII. Plan de Tratamiento">
+                        {/* Estudios Previos (Integrado en Plan) */}
+                        <div className="mb-8 border-b pb-6">
                             <YesNo
                                 label="Exámenes o estudios diagnósticos previos"
                                 value={previousStudies}
@@ -815,226 +1129,181 @@ export const InitialHistoryScreen = () => {
                             )}
                         </div>
 
-                        {/* V. EXAMEN FÍSICO - ÓRGANOS Y SISTEMAS */}
-                        <h4 className="font-bold text-gray-700 mb-4 block border-t pt-6">V. ÓRGANOS Y SISTEMAS</h4>
-                        <div className="overflow-x-auto mb-8">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr className="bg-gray-100">
-                                        <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">Órgano / Sistema</th>
-                                        <th className="border border-gray-300 px-4 py-2 text-center font-bold text-gray-700 w-24">Normal</th>
-                                        <th className="border border-gray-300 px-4 py-2 text-center font-bold text-gray-700 w-24">Anormal</th>
-                                        <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">Descripción (si anormal)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {[
-                                        { key: 'piel', label: 'Piel y Anexos' },
-                                        { key: 'cabeza', label: 'Cabeza y Cuello' },
-                                        { key: 'torax', label: 'Tórax' },
-                                        { key: 'cardiaco', label: 'Cardiovascular' },
-                                        { key: 'pulmonar', label: 'Pulmonar' },
-                                        { key: 'abdomen', label: 'Abdomen' },
-                                        { key: 'miembrosuper', label: 'Miembros Superiores' },
-                                        { key: 'miembroinfe', label: 'Miembros Inferiores' },
-                                        { key: 'neuro', label: 'Neurológico' },
-                                        { key: 'genitales', label: 'Genitourinario' },
-                                        { key: 'tacto', label: 'Tacto Rectal' },
-                                    ].map(({ key, label }) => {
-                                        const systemData = physicalExam?.systems?.[key] || { normal: false, abnormal: false, description: '' };
-                                        return (
-                                            <tr key={key} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-4 py-2 font-medium">{label}</td>
-                                                <td className="border border-gray-300 px-4 py-2 text-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                                                        checked={systemData.normal || false}
-                                                        onChange={(e) => {
-                                                            const current = (getValues(`physicalExam.systems.${key}`) || { normal: false, abnormal: false, description: '' }) as { normal: boolean; abnormal: boolean; description: string };
-                                                            setValue(`physicalExam.systems.${key}` as any, {
-                                                                ...current,
-                                                                normal: e.target.checked,
-                                                                abnormal: e.target.checked ? false : current.abnormal,
-                                                            }, { shouldDirty: true });
-                                                        }}
-                                                    />
-                                                </td>
-                                                <td className="border border-gray-300 px-4 py-2 text-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500"
-                                                        checked={systemData.abnormal || false}
-                                                        onChange={(e) => {
-                                                            const current = (getValues(`physicalExam.systems.${key}`) || { normal: false, abnormal: false, description: '' }) as { normal: boolean; abnormal: boolean; description: string };
-                                                            setValue(`physicalExam.systems.${key}` as any, {
-                                                                ...current,
-                                                                abnormal: e.target.checked,
-                                                                normal: e.target.checked ? false : current.normal,
-                                                            }, { shouldDirty: true });
-                                                        }}
-                                                    />
-                                                </td>
-                                                <td className="border border-gray-300 px-2 py-1">
-                                                    <input
-                                                        type="text"
-                                                        className="w-full px-2 py-1 border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                                                        placeholder={systemData.abnormal ? 'Describa la anormalidad...' : ''}
-                                                        disabled={!systemData.abnormal}
-                                                        value={systemData.description || ''}
-                                                        onChange={(e) => {
-                                                            const current = getValues(`physicalExam.systems.${key}`) || {};
-                                                            setValue(`physicalExam.systems.${key}` as any, {
-                                                                ...current,
-                                                                description: e.target.value,
-                                                            }, { shouldDirty: true });
-                                                        }}
-                                                    />
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                        <div className="space-y-6">
+                            {/* Alimentación */}
+                            <div>
+                                <h4 className="font-bold text-gray-700 mb-2">Indicaciones dietéticas</h4>
+                                <FloatingLabelInput
+                                    label="Detalles de alimentación"
+                                    as="textarea"
+                                    rows={2}
+                                    value={watch('treatment.food')}
+                                    onChange={e => setValue('treatment.food', e.target.value, { shouldDirty: true })}
+                                    wrapperClassName={`border-2 ${isOnline ? 'border-black' : 'border-red-500'}`}
+                                />
+                            </div>
 
-                        {/* 2. Tratamiento (Grid) */}
-                        <h4 className="font-bold text-gray-700 mb-4 block">Indicaciones Generales</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            <Controller
-                                name="treatment.food"
-                                control={control}
-                                render={({ field }) => (
-                                    <FloatingLabelInput
-                                        label="Alimentación / Dieta"
-                                        as="textarea"
-                                        rows={4}
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
-                                    />
-                                )}
-                            />
-                            <Controller
-                                name="treatment.meds"
-                                control={control}
-                                render={({ field }) => (
-                                    <FloatingLabelInput
-                                        label="Medicamentos (Indicaciones)"
-                                        as="textarea"
-                                        rows={4}
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
-                                    />
-                                )}
-                            />
-                            <Controller
-                                name="treatment.exams"
-                                control={control}
-                                render={({ field }) => (
-                                    <FloatingLabelInput
-                                        label="Exámenes a realizar"
-                                        as="textarea"
-                                        rows={4}
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
-                                    />
-                                )}
-                            />
-                            <Controller
-                                name="treatment.norms"
-                                control={control}
-                                render={({ field }) => (
-                                    <FloatingLabelInput
-                                        label="Normas / Recomendaciones"
-                                        as="textarea"
-                                        rows={4}
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
-                                    />
-                                )}
-                            />
-                        </div>
-
-                        {/* 3. Órdenes Médicas */}
-                        <h4 className="font-bold text-gray-700 mb-4 block border-t pt-6">Generación de Órdenes</h4>
-                        <div className="space-y-4 bg-gray-50/50 p-6 rounded-xl border border-gray-200/50">
-                            {[
-                                { key: 'medical', label: 'Orden Médica' },
-                                { key: 'prescription', label: 'Receta Médica' },
-                                { key: 'labs', label: 'Orden de Laboratorios' },
-                                { key: 'images', label: 'Orden de Imágenes' },
-                                { key: 'endoscopy', label: 'Orden de Endoscopias' }
-                            ].map(({ key, label }) => {
-                                const k = key as keyof typeof orders;
-                                return (
-                                    <div key={key} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm transition-all hover:border-blue-300">
-                                        <label className="flex items-center space-x-3 cursor-pointer mb-2">
-                                            <input
-                                                type="checkbox"
-                                                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                checked={orders?.[k]?.included || false}
-                                                onChange={(e) => {
-                                                    const current = getValues(`orders.${k}`);
-                                                    setValue(`orders.${k}`, { ...current, included: e.target.checked }, { shouldDirty: true });
-                                                }}
-                                            />
-                                            <span className="font-bold text-gray-800 text-lg">{label}</span>
-                                        </label>
-
-                                        {orders?.[k]?.included && (
-                                            <div className="mt-3 pl-8 animate-in fade-in slide-in-from-top-1">
-                                                <Controller
-                                                    name={`orders.${k}.details`}
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                        <FloatingLabelInput
-                                                            label={`Detalle de ${label}...`}
-                                                            as="textarea"
-                                                            rows={3}
-                                                            value={field.value}
-                                                            onChange={field.onChange}
-                                                            wrapperClassName="bg-white border-2 border-blue-100 focus-within:border-blue-500 rounded-xl"
-                                                        />
-                                                    )}
-                                                />
-                                            </div>
-                                        )}
+                            {/* Medicamentos - Lista */}
+                            <div>
+                                <h4 className="font-bold text-gray-700 mb-2">Medicamentos</h4>
+                                {getTreatmentArray('meds').map((med, i) => (
+                                    <div key={i} className="mb-2">
+                                        <input
+                                            type="text"
+                                            value={med}
+                                            onChange={e => handleTreatmentChange('meds', i, e.target.value)}
+                                            placeholder="Medicamento y dosis..."
+                                            className={isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500')}
+                                        />
                                     </div>
-                                );
-                            })}
+                                ))}
+                                <button type="button" onClick={() => addTreatmentItem('meds')} className="text-blue-600 text-sm hover:underline">+ Agregar medicamento</button>
+                            </div>
+
+                            {/* Exámenes - Lista */}
+                            <div>
+                                <h4 className="font-bold text-gray-700 mb-2">Exámenes</h4>
+                                {getTreatmentArray('exams').map((exam, i) => (
+                                    <div key={i} className="mb-2">
+                                        <input
+                                            type="text"
+                                            value={exam}
+                                            onChange={e => handleTreatmentChange('exams', i, e.target.value)}
+                                            placeholder="Examen..."
+                                            className={isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500')}
+                                        />
+                                    </div>
+                                ))}
+                                <button type="button" onClick={() => addTreatmentItem('exams')} className="text-blue-600 text-sm hover:underline">+ Agregar examen</button>
+                            </div>
+
+                            {/* Normas - Lista */}
+                            <div>
+                                <h4 className="font-bold text-gray-700 mb-2">Normas e Indicaciones</h4>
+                                {getTreatmentArray('norms').map((norm, i) => (
+                                    <div key={i} className="mb-2">
+                                        <input
+                                            type="text"
+                                            value={norm}
+                                            onChange={e => handleTreatmentChange('norms', i, e.target.value)}
+                                            placeholder="Indicación..."
+                                            className={isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500')}
+                                        />
+                                    </div>
+                                ))}
+                                <button type="button" onClick={() => addTreatmentItem('norms')} className="text-blue-600 text-sm hover:underline">+ Agregar indicación</button>
+                            </div>
+                        </div>
+                    </Section>
+
+                    {/* VIII. Orden Médica (New UI) */}
+                    <Section title="VIII. Orden Médica">
+                        <div className="flex flex-wrap gap-3 mb-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <button
+                                type="button"
+                                onClick={() => addMedicalOrder('prescription')}
+                                className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-700 transition flex items-center gap-2"
+                            >
+                                <Plus size={16} /> Receta
+                            </button>
+
+                            <div className="relative group">
+                                <button type="button" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition flex items-center gap-2">
+                                    <Plus size={16} /> Laboratorio
+                                </button>
+                                <div className="absolute top-full left-0 w-full h-4 bg-transparent z-10 hidden group-hover:block -mt-2"></div>
+                                <div className="absolute top-full left-0 mt-0 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-20 hidden group-hover:block">
+                                    <button type="button" onClick={() => addMedicalOrder('lab_general')} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700">General</button>
+                                    <button type="button" onClick={() => addMedicalOrder('lab_basic', PANEL_BASICO_PRESET)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700">Panel Básico</button>
+                                    <button type="button" onClick={() => addMedicalOrder('lab_extended', PANEL_AMPLIADO_PRESET)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700">Panel Ampliado</button>
+                                    <button type="button" onClick={() => addMedicalOrder('lab_feces', PANEL_HECES_PRESET)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700">Panel Heces</button>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => addMedicalOrder('image')}
+                                className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-purple-700 transition flex items-center gap-2"
+                            >
+                                <Plus size={16} /> Imágenes
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => addMedicalOrder('endoscopy')}
+                                className="bg-amber-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-amber-700 transition flex items-center gap-2"
+                            >
+                                <Plus size={16} /> Endoscopia
+                            </button>
                         </div>
 
-                        {/* 4. Comentarios Generales */}
-                        <div className="mt-8 pt-6 border-t">
-                            <Controller
-                                name="comments"
-                                control={control}
-                                render={({ field }) => (
-                                    <FloatingLabelInput
-                                        label="Comentarios Generales / Notas Adicionales"
-                                        as="textarea"
-                                        rows={4}
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
-                                    />
-                                )}
-                            />
+                        <div className="space-y-6">
+                            {(currentOrders).map((order) => (
+                                <div key={order.id} className="relative bg-white border-2 border-gray-100 rounded-xl p-4 shadow-sm group">
+                                    <button
+                                        type="button"
+                                        onClick={() => removeMedicalOrder(order.id)}
+                                        className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                    <div className="mb-3">
+                                        <span className={`text-xs font-bold uppercase px-2 py-1 rounded ${order.type === 'prescription' ? 'bg-emerald-100 text-emerald-700' :
+                                            order.type.startsWith('lab') ? 'bg-blue-100 text-blue-700' :
+                                                order.type === 'image' ? 'bg-purple-100 text-purple-700' :
+                                                    'bg-amber-100 text-amber-700'
+                                            }`}>
+                                            {order.type === 'prescription' ? 'Receta Médica' : order.type.startsWith('lab') ? 'Laboratorio' : order.type === 'image' ? 'Estudio de Imagen' : 'Endoscopia'}
+                                        </span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <FloatingLabelInput
+                                            label="Diagnóstico / Razón"
+                                            value={order.diagnosis}
+                                            onChange={e => updateMedicalOrder(order.id, 'diagnosis', e.target.value)}
+                                            wrapperClassName="border-2 border-gray-100"
+                                        />
+                                        <FloatingLabelInput
+                                            label="Contenido / Detalles"
+                                            as="textarea"
+                                            rows={3}
+                                            value={order.content}
+                                            onChange={e => updateMedicalOrder(order.id, 'content', e.target.value)}
+                                            wrapperClassName="border-2 border-gray-100"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                            {currentOrders.length === 0 && <p className="text-center text-gray-400 py-4 italic">No hay órdenes médicas agregadas</p>}
                         </div>
+                    </Section>
 
-                    </MemoizedSection>
+                    {/* IX. Comentarios Generales */}
+                    <div className="mt-8 pt-6 border-t">
+                        <Controller
+                            name="comments"
+                            control={control}
+                            render={({ field }) => (
+                                <FloatingLabelInput
+                                    label="Comentarios Generales / Notas Adicionales"
+                                    as="textarea"
+                                    rows={4}
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
+                                />
+                            )}
+                        />
+                    </div>
 
                     <div className="fixed bottom-0 left-0 w-full p-4 flex justify-center z-50 pointer-events-none">
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] pointer-events-auto disabled:opacity-50"
+                            className={`${isOnline ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20' : 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'} text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] pointer-events-auto disabled:opacity-50`}
                         >
-                            <Save size={20} /> {isSubmitting ? 'Guardando...' : 'Guardar'}
+                            {isOnline ? <Save size={20} /> : <WifiOff size={20} />}
+                            {isSubmitting ? 'Guardando...' : (isOnline ? 'Guardar' : 'Guardar en Local')}
                         </button>
                     </div>
                     <ObesityHistoryModal

@@ -2,6 +2,7 @@ import React from 'react';
 import { FileText, Eye, Plus, Edit, Trash2 } from 'lucide-react';
 import { ActionButtonSmall } from './SharedComponents';
 import { InitialHistory, Patient } from '../../types';
+import { useAuth } from '../../context/AuthContext';
 
 interface HistoryListProps {
     patient: Patient;
@@ -11,6 +12,9 @@ interface HistoryListProps {
 }
 
 export const HistoryList: React.FC<HistoryListProps> = ({ patient, histories, navigate, onDelete }) => {
+    const { role } = useAuth();
+    const isAssistant = role === 'assistant';
+
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
@@ -22,7 +26,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ patient, histories, na
                         Historias Clínicas
                     </h3>
                     {/* Link to Migrated History (Restored Legacy Behavior) */}
-                    {(patient.isMigrated || patient.legacyIdSistema) && (
+                    {(patient.isMigrated || patient.legacyIdSistema) && !isAssistant && (
                         <button
                             onClick={() => navigate(`/app/historiaclinica2025/${patient.id}`)}
                             className="flex items-center gap-1 text-xs font-bold text-teal-600 bg-teal-50 px-3 py-1.5 rounded-full hover:bg-teal-100 transition-colors"
@@ -31,12 +35,14 @@ export const HistoryList: React.FC<HistoryListProps> = ({ patient, histories, na
                         </button>
                     )}
                 </div>
-                <button
-                    onClick={() => navigate(`/app/history/${patient.id}`, { state: { forceNew: true } })}
-                    className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition-colors flex items-center gap-1 border border-blue-100"
-                >
-                    <Plus size={14} /> Nueva
-                </button>
+                {!isAssistant && (
+                    <button
+                        onClick={() => navigate(`/app/history/${patient.id}`, { state: { forceNew: true } })}
+                        className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition-colors flex items-center gap-1 border border-blue-100"
+                    >
+                        <Plus size={14} /> Nueva
+                    </button>
+                )}
             </div>
 
             {histories.length > 0 ? (
@@ -61,11 +67,13 @@ export const HistoryList: React.FC<HistoryListProps> = ({ patient, histories, na
 
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 {h.isValidated === false ? (
-                                    <ActionButtonSmall
-                                        icon={<Edit size={16} />}
-                                        onClick={() => navigate(`/app/history/${patient.id}`, { state: { history: h } })}
-                                        color="amber"
-                                    />
+                                    !isAssistant && (
+                                        <ActionButtonSmall
+                                            icon={<Edit size={16} />}
+                                            onClick={() => navigate(`/app/history/${patient.id}`, { state: { history: h } })}
+                                            color="amber"
+                                        />
+                                    )
                                 ) : (
                                     <>
                                         <ActionButtonSmall
@@ -73,18 +81,22 @@ export const HistoryList: React.FC<HistoryListProps> = ({ patient, histories, na
                                             onClick={() => navigate(`/app/history-view/${patient.id}/${h.id}`)}
                                             color="blue"
                                         />
-                                        <ActionButtonSmall
-                                            icon={<Edit size={16} />}
-                                            onClick={() => navigate(`/app/history/${patient.id}`, { state: { history: h } })}
-                                            color="amber"
-                                        />
+                                        {!isAssistant && (
+                                            <ActionButtonSmall
+                                                icon={<Edit size={16} />}
+                                                onClick={() => navigate(`/app/history/${patient.id}`, { state: { history: h } })}
+                                                color="amber"
+                                            />
+                                        )}
                                     </>
                                 )}
-                                <ActionButtonSmall
-                                    icon={<Trash2 size={16} />}
-                                    onClick={() => onDelete(h.id)}
-                                    color="red"
-                                />
+                                {!isAssistant && (
+                                    <ActionButtonSmall
+                                        icon={<Trash2 size={16} />}
+                                        onClick={() => onDelete(h.id)}
+                                        color="red"
+                                    />
+                                )}
                             </div>
                         </div>
                     ))}

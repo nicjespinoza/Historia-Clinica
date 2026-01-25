@@ -155,9 +155,9 @@ export interface InitialHistory {
 
   treatment: {
     food: string;
-    meds: string;
-    exams: string;
-    norms: string;
+    meds: string | string[];
+    exams: string | string[];
+    norms: string | string[];
   };
 
   orders: {
@@ -169,6 +169,8 @@ export interface InitialHistory {
   };
 
   diagnosis: string;
+  diagnoses?: string[]; // Multiple diagnoses support
+  medicalOrders?: MedicalOrder[]; // Complex orders support
   isValidated?: boolean;
   obesityHistory?: ObesityHistory;
 }
@@ -204,6 +206,13 @@ export interface ObesityHistory {
   };
 }
 
+export interface MedicalOrder {
+  id: string;
+  type: 'prescription' | 'lab_general' | 'lab_basic' | 'lab_extended' | 'lab_feces' | 'image' | 'endoscopy';
+  diagnosis: string;
+  content: string;
+}
+
 export interface SubsequentConsult {
   id: string;
   patientId: string;
@@ -220,7 +229,7 @@ export interface SubsequentConsult {
     results: string;
   };
   comments: string;
-  diagnoses: string[]; // 5 lines
+  diagnoses: string[]; // Dynamic list
 
   treatment: {
     food: string;
@@ -228,6 +237,11 @@ export interface SubsequentConsult {
     exams: string[];
     norms: string[];
   };
+
+  medicalOrders?: MedicalOrder[]; // New structured orders
+
+  status?: 'draft' | 'completed'; // New field for Assistant drafts
+  obesityHistory?: ObesityHistory;
 }
 
 export interface Appointment {

@@ -278,12 +278,17 @@ export const api = {
     createHistory: async (data: Omit<InitialHistory, 'id'>): Promise<InitialHistory> => {
         // Always save new histories to the subcollection
         const docRef = await addDoc(collection(db, 'patients', data.patientId, 'histories'), data);
-        await logAudit({
-            action: 'CREATE_HISTORY',
-            details: `Created history for patient ${data.patientId}`,
-            targetId: docRef.id,
-            metadata: { patientId: data.patientId }
-        });
+        // Wrap audit in try-catch to ensure main action succeeds even if audit fails/queues weirdly
+        try {
+            await logAudit({
+                action: 'CREATE_HISTORY',
+                details: `Created history for patient ${data.patientId}`,
+                targetId: docRef.id,
+                metadata: { patientId: data.patientId }
+            });
+        } catch (e) {
+            console.warn("Offline: Audit log queued or failed", e);
+        }
         return { id: docRef.id, ...data } as InitialHistory;
     },
 
@@ -375,9 +380,11 @@ export const api = {
             const rootDocs = rootSnapshot.docs.map(doc => docToData<SubsequentConsult>(doc));
 
             // Combine
-            const combined = [...subDocs, ...rootDocs].sort((a, b) =>
-                new Date(b.date).getTime() - new Date(a.date).getTime()
-            );
+            const combined = [...subDocs, ...rootDocs].sort((a, b) => {
+                const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
+                const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
+                return dateB.getTime() - dateA.getTime();
+            });
             return combined;
         }
 
@@ -393,13 +400,59 @@ export const api = {
 
     createConsult: async (data: Omit<SubsequentConsult, 'id'>): Promise<SubsequentConsult> => {
         const docRef = await addDoc(collection(db, 'patients', data.patientId, 'consults'), data);
-        await logAudit({
-            action: 'CREATE_CONSULT',
-            details: `Created consult for patient ${data.patientId}`,
-            targetId: docRef.id,
-            metadata: { patientId: data.patientId }
-        });
+        try {
+            await logAudit({
+                action: 'CREATE_CONSULT',
+                details: `Created consult for patient ${data.patientId}`,
+                targetId: docRef.id,
+                metadata: { patientId: data.patientId }
+            });
+        } catch (e) {
+            console.warn("Offline: Audit log queued or failed", e);
+        }
         return { id: docRef.id, ...data } as SubsequentConsult;
+    },
+
+    updateConsult: async (consultId: string, data: Partial<SubsequentConsult>): Promise<SubsequentConsult> => {
+        if (!data.patientId) throw new Error('patientId required to update consult');
+
+        // Try to update in subcollection first
+        try {
+            const docRef = doc(db, 'patients', data.patientId, 'consults', consultId);
+            await updateDoc(docRef, data);
+            const updated = await getDoc(docRef);
+            return docToData<SubsequentConsult>(updated);
+        } catch (e) {
+            // Try root collection (legacy)
+            try {
+                const rootDocRef = doc(db, 'subsequentConsults', consultId);
+                await updateDoc(rootDocRef, data);
+                const updated = await getDoc(rootDocRef);
+                return docToData<SubsequentConsult>(updated);
+            } catch (rootError) {
+                throw new Error('Consult not found in either location');
+            }
+        }
+    },
+
+    deleteConsult: async (consultId: string, patientId?: string): Promise<void> => {
+        if (!patientId) throw new Error("Patient ID required for deletion");
+
+        // Try deleting from subcollection
+        const subDocRef = doc(db, 'patients', patientId, 'consults', consultId);
+        const subDoc = await getDoc(subDocRef);
+        if (subDoc.exists()) {
+            await deleteDoc(subDocRef);
+            return;
+        }
+
+        // Try deleting from root collection
+        const rootDocRef = doc(db, 'subsequentConsults', consultId);
+        const rootDoc = await getDoc(rootDocRef);
+        if (rootDoc.exists()) {
+            await deleteDoc(rootDocRef);
+            return;
+        }
     },
 
     // ==================== OBSERVATIONS (Subcollection) ====================

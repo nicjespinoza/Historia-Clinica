@@ -1,15 +1,45 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Save, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Save, ArrowLeft, AlertCircle, Trash2, Plus, WifiOff } from 'lucide-react';
 import { Patient, SubsequentConsult, PhysicalExam } from '../../types';
 import { api } from '../../lib/api';
 import { FloatingLabelInput } from '../../components/premium-ui/FloatingLabelInput';
 import { CheckboxList, PhysicalExamSection } from '../../components/ui/FormComponents';
 import * as C from '../../constants';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ObesityHistoryModal } from '../../components/ObesityHistoryModal';
+import { useAuth } from '../../context/AuthContext';
 
-const INPUT_CLASS = "w-full px-4 py-2.5 bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 block transition-all duration-200 outline-none placeholder-gray-400 hover:bg-white";
+const INPUT_CLASS = "w-full px-4 py-2.5 bg-gray-50 border-2 border-black text-gray-800 text-sm rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 block transition-all duration-200 outline-none placeholder-gray-400 hover:bg-white";
 const SECTION_TITLE_CLASS = "text-xl font-bold text-gray-800 mb-6 flex items-center gap-2";
+
+const PANEL_BASICO_PRESET = `1. BHC
+2. Glicemina
+3. Creatimina
+4. TP, TP, INR
+5. Examen General de Orina
+6. Tipo y PH`;
+
+const PANEL_AMPLIADO_PRESET = `1. BHC
+2. Glicemina
+3. Hemoglobina Glicesilada A1C
+4. Creatimina
+5. Perful Hepatico
+6. Perfil Hipidico
+7. Perfil Tiroideo
+8. Ionograma
+9. Vitamina D3
+10. Vitamina B12
+11. Examen de Orina (360)
+12. Ferritina
+13. LDH
+14. Acido Urico
+15. V56
+16. TPT
+17. Tipo y RH`;
+
+const PANEL_HECES_PRESET = `1. Citologia Fecal
+2. Tincion de Kinyoun
+3. Copuocultivo`;
 
 export interface ConsultScreenProps {
     patients?: Patient[];
@@ -71,53 +101,120 @@ const validateVitalSigns = (physicalExam: PhysicalExam): { valid: boolean; error
     return { valid: errors.length === 0, errors };
 };
 
+const Section = ({ title, children, className = "" }: { title: string, children?: React.ReactNode, className?: string }) => (
+    <div className={`bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8 ${className}`}>
+        <h3 className={SECTION_TITLE_CLASS}>{title}</h3>
+        {children}
+    </div>
+);
+
+const NumericInput = ({
+    label, value, onChange, min, max, step = "1", unit = "", placeholder = "", isOnline = true
+}: {
+    label: string; value: string; onChange: (v: string) => void;
+    min?: number; max?: number; step?: string; unit?: string; placeholder?: string; isOnline?: boolean;
+}) => {
+    const baseClass = isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500');
+    return (
+        <div className="flex-1">
+            <label className="block text-xs uppercase font-bold text-gray-500 mb-1">{label}</label>
+            <div className="relative">
+                <input
+                    type="number"
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={value}
+                    onChange={e => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    className={`${baseClass} ${unit ? 'pr-12' : ''}`}
+                />
+                {unit && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                        {unit}
+                    </span>
+                )}
+            </div>
+        </div>
+    );
+};
+
 export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => {
     const { patientId } = useParams<{ patientId: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
+    const { role } = useAuth();
+
+    // Offline State
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
+    // Dynamic Styles for Offline Mode
+    const inputBorderClass = isOnline ? "border-black" : "border-red-500";
+
     const [patient, setPatient] = useState<Patient | null>(null);
 
-    const [c, setC] = useState<Omit<SubsequentConsult, 'id'>>({
+    // Initial State (Default empty)
+    const emptyConsult: Omit<SubsequentConsult, 'id'> = {
         patientId: '',
         date: new Date().toISOString().split('T')[0],
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: new Date().toTimeString().slice(0, 5), // Real-time HH:mm format
         motives: {},
         otherMotive: '',
         evolutionTime: '',
         historyOfPresentIllness: '',
         physicalExam: {
             fc: '', fr: '', temp: '', pa: '', pam: '', sat02: '', weight: '', height: '', imc: '',
-            systems: {}
+            systems: C.SYSTEMS_LIST.reduce((acc, sys) => ({ ...acc, [sys]: { normal: true, abnormal: false, description: '' } }), {})
         },
         labs: {
             performed: { yes: false, no: true },
             results: ''
         },
         comments: '',
-        diagnoses: ['', '', '', '', ''],
+        diagnoses: [''],
         treatment: {
             food: '',
             meds: [''],
             exams: [''],
             norms: ['']
-        }
-    });
+        },
+        status: role === 'assistant' ? 'draft' : 'completed',
+        obesityHistory: undefined
+    };
 
+    const [c, setC] = useState<SubsequentConsult | Omit<SubsequentConsult, 'id'>>(emptyConsult);
     const [saving, setSaving] = useState(false);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [showObesityModal, setShowObesityModal] = useState(false);
 
+    // Load Patient & Draft Data
     useEffect(() => {
         const loadPatient = async () => {
             if (patientId) {
                 const p = await api.getPatient(patientId);
                 setPatient(p);
-                if (p) {
+
+                // If we have a consult in location state (Edit or Complete Draft), load it
+                if (location.state?.consult) {
+                    const existingConsult = location.state.consult as SubsequentConsult;
+                    setC(existingConsult);
+                } else if (p) {
                     setC(prev => ({ ...prev, patientId: p.id }));
                 }
             }
         };
         loadPatient();
-    }, [patientId]);
+    }, [patientId, location.state]);
 
     // Calcular IMC automáticamente
     const calculatedImc = useMemo(() => {
@@ -129,6 +226,16 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
         }
         return '';
     }, [c.physicalExam.weight, c.physicalExam.height]);
+
+    // Clafisicación IMC
+    const getIMCClassification = (imc: number): string => {
+        if (imc < 18.5) return 'Bajo peso';
+        if (imc < 25) return 'Peso normal';
+        if (imc < 30) return 'Sobrepeso';
+        if (imc < 35) return 'Obesidad de clase I';
+        if (imc < 40) return 'Obesidad de clase II';
+        return 'Obesidad de clase III (mórbida)';
+    };
 
     // Actualizar IMC cuando cambia peso o altura
     React.useEffect(() => {
@@ -145,6 +252,11 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
             ...prev,
             motives: { ...prev.motives, [motive]: checked }
         }));
+
+        // Open modal if Obesidad is checked
+        if (motive === 'Obesidad' && checked) {
+            setShowObesityModal(true);
+        }
     };
 
     const handleDiagnosisChange = (index: number, value: string) => {
@@ -155,12 +267,60 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
         });
     };
 
+    // Diagnosis Handlers
+    const addDiagnosis = () => {
+        setC(prev => ({ ...prev, diagnoses: [...prev.diagnoses, ''] }));
+    };
+
+    const removeDiagnosis = (index: number) => {
+        setC(prev => {
+            const newDiagnoses = prev.diagnoses.filter((_, i) => i !== index);
+            return { ...prev, diagnoses: newDiagnoses };
+        });
+    };
+
+    // Medical Orders Handlers
+    const addMedicalOrder = (
+        type: 'prescription' | 'lab_general' | 'lab_basic' | 'lab_extended' | 'lab_feces' | 'image' | 'endoscopy',
+        defaultContent: string = ''
+    ) => {
+        setC(prev => ({
+            ...prev,
+            medicalOrders: [
+                ...(prev.medicalOrders || []),
+                {
+                    id: Date.now().toString() + Math.random().toString(),
+                    type,
+                    diagnosis: '',
+                    content: defaultContent
+                }
+            ]
+        }));
+    };
+
+    const updateMedicalOrder = (id: string, field: 'diagnosis' | 'content', value: string) => {
+        setC(prev => ({
+            ...prev,
+            medicalOrders: (prev.medicalOrders || []).map(order =>
+                order.id === id ? { ...order, [field]: value } : order
+            )
+        }));
+    };
+
+    const removeMedicalOrder = (id: string) => {
+        setC(prev => ({
+            ...prev,
+            medicalOrders: (prev.medicalOrders || []).filter(order => order.id !== id)
+        }));
+    };
+
     const handleArrayFieldChange = (
         field: 'meds' | 'exams' | 'norms',
         index: number,
         value: string
     ) => {
         setC(prev => {
+            // @ts-ignore
             const newArr = [...prev.treatment[field]];
             newArr[index] = value;
             return { ...prev, treatment: { ...prev.treatment, [field]: newArr } };
@@ -170,6 +330,7 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
     const addArrayField = (field: 'meds' | 'exams' | 'norms') => {
         setC(prev => ({
             ...prev,
+            // @ts-ignore
             treatment: { ...prev.treatment, [field]: [...prev.treatment[field], ''] }
         }));
     };
@@ -184,7 +345,30 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
 
         setSaving(true);
         try {
-            await api.createConsult(c);
+            // Set status based on role or keep existing if completing
+            // If role is assistant, always save as draft
+            // If role is doctor, set to completed (unless explicitly editing a draft to keep it draft? No, doctors usually complete)
+            // Logic: 
+            // - Assistant creating/editing -> always draft
+            // - Doctor creating -> completed
+            // - Doctor editing draft -> completed (completing it)
+            // - Doctor editing completed -> completed
+
+            let statusToSave: 'draft' | 'completed' = 'completed';
+            if (role === 'assistant') {
+                statusToSave = 'draft';
+            }
+
+            const dataToSave = { ...c, status: statusToSave };
+
+            if ('id' in c && c.id) {
+                // Update existing (Draft or Edit)
+                await api.updateConsult(c.id, dataToSave);
+            } else {
+                // Create new
+                await api.createConsult(dataToSave);
+            }
+
             navigate(`/app/profile/${patient?.id}`);
         } catch (e) {
             console.error(e);
@@ -194,40 +378,9 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
         }
     };
 
-    const Section = ({ title, children, className = "" }: { title: string, children?: React.ReactNode, className?: string }) => (
-        <div className={`bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8 ${className}`}>
-            <h3 className={SECTION_TITLE_CLASS}>{title}</h3>
-            {children}
-        </div>
-    );
-
-    const NumericInput = ({
-        label, value, onChange, min, max, step = "1", unit = "", placeholder = ""
-    }: {
-        label: string; value: string; onChange: (v: string) => void;
-        min?: number; max?: number; step?: string; unit?: string; placeholder?: string;
-    }) => (
-        <div className="flex-1">
-            <label className="block text-xs uppercase font-bold text-gray-500 mb-1">{label}</label>
-            <div className="relative">
-                <input
-                    type="number"
-                    min={min}
-                    max={max}
-                    step={step}
-                    value={value}
-                    onChange={e => onChange(e.target.value)}
-                    placeholder={placeholder}
-                    className={`${INPUT_CLASS} ${unit ? 'pr-12' : ''}`}
-                />
-                {unit && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-                        {unit}
-                    </span>
-                )}
-            </div>
-        </div>
-    );
+    if (!patient) {
+        return <div className="p-8 text-center text-gray-500">Paciente no encontrado.</div>;
+    }
 
     if (!patient) {
         return <div className="p-8 text-center text-gray-500">Paciente no encontrado.</div>;
@@ -238,30 +391,54 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
             <ObesityHistoryModal
                 isOpen={showObesityModal}
                 onClose={() => setShowObesityModal(false)}
-                data={c.motives}
-                onChange={handleMotiveChange}
+                onSave={(data) => {
+                    setC(prev => ({ ...prev, obesityHistory: data }));
+                    setShowObesityModal(false);
+                }}
+                initialData={c.obesityHistory}
             />
 
             <div className="max-w-5xl mx-auto p-4 pb-32">
                 {/* Header */}
-                <div className="bg-white p-6 rounded-t-2xl border-b border-gray-200 mb-8 shadow-sm relative">
-                    <button onClick={() => navigate(-1)} className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
-                        <ArrowLeft size={24} />
-                    </button>
-                    <h2 className="text-3xl font-bold text-gray-900 mb-2">Consulta Subsecuente</h2>
-                    <div className="flex flex-wrap gap-6 mt-4 text-sm text-gray-600 bg-gray-50 p-4 rounded-xl">
-                        <div className="flex flex-col">
-                            <span className="text-xs uppercase font-bold text-gray-400">Fecha</span>
-                            <input type="date" value={c.date} onChange={e => setC({ ...c, date: e.target.value })} className="bg-transparent border-b border-gray-300 focus:border-blue-500 outline-none" />
+                <div className="sticky top-0 z-40 bg-white p-4 rounded-b-xl shadow-md mb-8 flex flex-col md:flex-row justify-between items-center text-[#083c79] border-b-4 border-yellow-400">
+                    <div>
+                        <h2 className="text-2xl font-bold mb-1">Consulta Subsecuente</h2>
+                        <div className="flex items-center gap-4 text-xs font-medium text-gray-600">
+                            <div>
+                                <span className="opacity-70 uppercase mr-1">Fecha:</span>
+                                <input
+                                    type="date"
+                                    value={c.date}
+                                    onChange={e => setC({ ...c, date: e.target.value })}
+                                    className="bg-gray-100 border border-gray-300 rounded px-2 py-0.5 text-gray-800 outline-none focus:border-yellow-400"
+                                />
+                            </div>
+                            <div>
+                                <span className="opacity-70 uppercase mr-1">HORA:</span>
+                                <input
+                                    type="time"
+                                    value={c.time}
+                                    onChange={e => setC({ ...c, time: e.target.value })}
+                                    className="bg-gray-100 border border-gray-300 rounded px-2 py-0.5 text-gray-800 outline-none focus:border-yellow-400"
+                                />
+                            </div>
                         </div>
-                        <div className="flex flex-col">
-                            <span className="text-xs uppercase font-bold text-gray-400">Hora</span>
-                            <input type="time" value={c.time} onChange={e => setC({ ...c, time: e.target.value })} className="bg-transparent border-b border-gray-300 focus:border-blue-500 outline-none" />
+                    </div>
+
+                    <div className="flex items-center gap-4 mt-4 md:mt-0">
+                        <div className="text-right hidden md:block">
+                            <p className="font-bold">{patient.firstName} {patient.lastName}</p>
+                            <p className="text-xs text-blue-600">{patient.ageDetails}</p>
                         </div>
-                        <div className="flex flex-col">
-                            <span className="text-xs uppercase font-bold text-gray-400">Paciente</span>
-                            <span className="font-medium text-gray-800">{patient.firstName} {patient.lastName} ({patient.ageDetails})</span>
-                        </div>
+
+
+
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="bg-gray-100 hover:bg-gray-200 text-[#083c79] px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 border border-gray-200"
+                        >
+                            <ArrowLeft size={18} /> Regresar
+                        </button>
                     </div>
                 </div>
 
@@ -303,6 +480,7 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
                             label="Otros Motivos"
                             value={c.otherMotive}
                             onChange={e => setC({ ...c, otherMotive: e.target.value })}
+                            wrapperClassName={`border-2 ${inputBorderClass}`}
                         />
                     </div>
                     <div className="mt-4">
@@ -311,20 +489,24 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
                             value={c.evolutionTime}
                             onChange={e => setC({ ...c, evolutionTime: e.target.value })}
                             placeholder="Ej: 3 días, 2 semanas..."
+                            wrapperClassName={`border-2 ${inputBorderClass}`}
                         />
                     </div>
                 </Section>
 
-                {/* Historia de Enfermedad Actual */}
-                <Section title="Historia de Enfermedad Actual">
-                    <FloatingLabelInput
-                        label="Descripción detallada"
-                        as="textarea"
-                        rows={4}
-                        value={c.historyOfPresentIllness}
-                        onChange={e => setC({ ...c, historyOfPresentIllness: e.target.value })}
-                    />
-                </Section>
+                {/* Historia de Enfermedad Actual - Hidden for Assistant */}
+                {role !== 'assistant' && (
+                    <Section title="Historia de Enfermedad Actual">
+                        <FloatingLabelInput
+                            label="Descripción detallada"
+                            as="textarea"
+                            rows={4}
+                            value={c.historyOfPresentIllness}
+                            onChange={e => setC({ ...c, historyOfPresentIllness: e.target.value })}
+                            wrapperClassName={`border-2 ${inputBorderClass}`}
+                        />
+                    </Section>
+                )}
 
                 {/* Examen Físico con inputs numéricos */}
                 <Section title="Signos Vitales">
@@ -334,24 +516,28 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
                             value={c.physicalExam.fc}
                             onChange={v => setC({ ...c, physicalExam: { ...c.physicalExam, fc: v } })}
                             min={40} max={200} unit="lpm" placeholder="60-100"
+                            isOnline={isOnline}
                         />
                         <NumericInput
                             label="FR"
                             value={c.physicalExam.fr}
                             onChange={v => setC({ ...c, physicalExam: { ...c.physicalExam, fr: v } })}
                             min={8} max={40} unit="rpm" placeholder="12-20"
+                            isOnline={isOnline}
                         />
                         <NumericInput
                             label="Temperatura"
                             value={c.physicalExam.temp}
                             onChange={v => setC({ ...c, physicalExam: { ...c.physicalExam, temp: v } })}
                             min={34} max={42} step="0.1" unit="°C" placeholder="36.5"
+                            isOnline={isOnline}
                         />
                         <NumericInput
                             label="SatO2"
                             value={c.physicalExam.sat02}
                             onChange={v => setC({ ...c, physicalExam: { ...c.physicalExam, sat02: v } })}
                             min={70} max={100} unit="%" placeholder="95-100"
+                            isOnline={isOnline}
                         />
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
@@ -360,12 +546,14 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
                             value={c.physicalExam.pa}
                             onChange={e => setC({ ...c, physicalExam: { ...c.physicalExam, pa: e.target.value } })}
                             placeholder="120/80"
+                            wrapperClassName={`border-2 ${inputBorderClass}`}
                         />
                         <FloatingLabelInput
                             label="PAM (mmHg)"
                             value={c.physicalExam.pam}
                             onChange={e => setC({ ...c, physicalExam: { ...c.physicalExam, pam: e.target.value } })}
                             placeholder="93"
+                            wrapperClassName={`border-2 ${inputBorderClass}`}
                         />
                         <NumericInput
                             label="Peso"
@@ -380,165 +568,305 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
                             min={30} max={250} unit="cm" placeholder="170"
                         />
                     </div>
-                    <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-center gap-2">
-                        <span className="text-blue-700 font-bold">IMC:</span>
-                        <span className="text-blue-600">{c.physicalExam.imc || '-'} kg/m²</span>
+                    <div className="mt-4 flex flex-wrap items-center gap-4">
+                        <div className="p-3 bg-blue-50 rounded-lg flex items-center gap-2">
+                            <span className="text-blue-700 font-bold">IMC:</span>
+                            <span className="text-blue-600">{c.physicalExam.imc || '-'} kg/m²</span>
+                        </div>
+                        {c.physicalExam.imc && (
+                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                <p className="text-blue-800 font-bold text-sm flex items-center gap-2">
+                                    <AlertCircle size={16} />
+                                    {getIMCClassification(parseFloat(c.physicalExam.imc))}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </Section>
 
                 {/* Examen por Sistemas */}
-                <PhysicalExamSection data={c.physicalExam} onChange={(d) => setC({ ...c, physicalExam: d })} />
+                {role !== 'assistant' && (
+                    <PhysicalExamSection data={c.physicalExam} onChange={(d) => setC({ ...c, physicalExam: d })} hideVitals={true} />
+                )}
 
                 {/* Laboratorios */}
-                <Section title="Laboratorios">
-                    <div className="flex gap-6 mb-4">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="radio"
-                                name="labs"
-                                checked={c.labs.performed.yes}
-                                onChange={() => setC({ ...c, labs: { ...c.labs, performed: { yes: true, no: false } } })}
-                                className="w-4 h-4 text-blue-600"
+                {role !== 'assistant' && (
+                    <Section title="Exámenes o estudios diagnósticos previos:" className="mt-12">
+                        <div className="flex gap-6 mb-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="labs"
+                                    checked={c.labs.performed.yes}
+                                    onChange={() => setC({ ...c, labs: { ...c.labs, performed: { yes: true, no: false } } })}
+                                    className="w-4 h-4 text-blue-600"
+                                />
+                                <span>Realizados</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="labs"
+                                    checked={c.labs.performed.no}
+                                    onChange={() => setC({ ...c, labs: { ...c.labs, performed: { yes: false, no: true } } })}
+                                    className="w-4 h-4 text-blue-600"
+                                />
+                                <span>No realizados</span>
+                            </label>
+                        </div>
+                        {c.labs.performed.yes && (
+                            <FloatingLabelInput
+                                label="Resultados"
+                                as="textarea"
+                                rows={3}
+                                value={c.labs.results}
+                                onChange={e => setC({ ...c, labs: { ...c.labs, results: e.target.value } })}
+                                wrapperClassName="border-2 border-black"
                             />
-                            <span>Realizados</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="radio"
-                                name="labs"
-                                checked={c.labs.performed.no}
-                                onChange={() => setC({ ...c, labs: { ...c.labs, performed: { yes: false, no: true } } })}
-                                className="w-4 h-4 text-blue-600"
-                            />
-                            <span>No realizados</span>
-                        </label>
-                    </div>
-                    {c.labs.performed.yes && (
-                        <FloatingLabelInput
-                            label="Resultados"
-                            as="textarea"
-                            rows={3}
-                            value={c.labs.results}
-                            onChange={e => setC({ ...c, labs: { ...c.labs, results: e.target.value } })}
-                        />
-                    )}
-                </Section>
+                        )}
+                    </Section>
+                )}
 
                 {/* Comentarios */}
-                <Section title="Comentarios">
-                    <FloatingLabelInput
-                        label="Observaciones adicionales"
-                        as="textarea"
-                        rows={3}
-                        value={c.comments}
-                        onChange={e => setC({ ...c, comments: e.target.value })}
-                    />
-                </Section>
+                {role !== 'assistant' && (
+                    <Section title="Comentarios">
+                        <FloatingLabelInput
+                            label="Observaciones adicionales"
+                            as="textarea"
+                            rows={3}
+                            value={c.comments}
+                            onChange={e => setC({ ...c, comments: e.target.value })}
+                            wrapperClassName={`border-2 ${inputBorderClass}`}
+                        />
+                    </Section>
+                )}
 
                 {/* Diagnósticos */}
-                <Section title="Diagnósticos">
-                    <div className="space-y-3">
-                        {c.diagnoses.map((dx, i) => (
-                            <div key={i} className="flex items-center gap-3">
-                                <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
-                                    {i + 1}
-                                </span>
-                                <input
-                                    type="text"
-                                    value={dx}
-                                    onChange={e => handleDiagnosisChange(i, e.target.value)}
-                                    placeholder={`Diagnóstico ${i + 1}`}
-                                    className={INPUT_CLASS}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                </Section>
+                {role !== 'assistant' && (
+                    <Section title="Diagnósticos">
+                        <div className="space-y-3">
+                            {c.diagnoses.map((dx, i) => (
+                                <div key={i} className="flex items-center gap-3">
+                                    <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
+                                        {i + 1}
+                                    </span>
+                                    <input
+                                        type="text"
+                                        value={dx}
+                                        onChange={e => handleDiagnosisChange(i, e.target.value)}
+                                        placeholder={`Diagnóstico ${i + 1}`}
+                                        className={isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500')}
+                                    />
+                                    {c.diagnoses.length > 1 && (
+                                        <button
+                                            onClick={() => removeDiagnosis(i)}
+                                            className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            <button
+                                onClick={addDiagnosis}
+                                className="text-blue-600 font-bold text-sm hover:underline flex items-center gap-1 mt-2"
+                            >
+                                <Plus size={16} /> Agregar diagnóstico
+                            </button>
+                        </div>
+                    </Section>
+                )}
 
                 {/* Plan de Tratamiento */}
-                <Section title="Plan de Tratamiento">
-                    <div className="space-y-6">
-                        <div>
-                            <h4 className="font-bold text-gray-700 mb-2">Alimentación</h4>
-                            <FloatingLabelInput
-                                label="Indicaciones dietéticas"
-                                as="textarea"
-                                rows={2}
-                                value={c.treatment.food}
-                                onChange={e => setC({ ...c, treatment: { ...c.treatment, food: e.target.value } })}
-                            />
+                {role !== 'assistant' && (
+                    <Section title="Plan de Tratamiento">
+                        <div className="space-y-6">
+                            {/* Alimentación */}
+                            <div>
+                                <h4 className="font-bold text-gray-700 mb-2">Indicaciones dietéticas</h4>
+                                <FloatingLabelInput
+                                    label="Detalles de alimentación"
+                                    as="textarea"
+                                    rows={2}
+                                    value={c.treatment.food}
+                                    onChange={e => setC({ ...c, treatment: { ...c.treatment, food: e.target.value } })}
+                                    wrapperClassName={`border-2 ${inputBorderClass}`}
+                                />
+                            </div>
+
+                            {/* Medicamentos */}
+                            <div>
+                                <h4 className="font-bold text-gray-700 mb-2">Medicamentos</h4>
+                                {c.treatment.meds.map((med, i) => (
+                                    <div key={i} className="mb-2">
+                                        <input
+                                            type="text"
+                                            value={med}
+                                            onChange={e => handleArrayFieldChange('meds', i, e.target.value)}
+                                            placeholder="Medicamento y dosis..."
+                                            className={isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500')}
+                                        />
+                                    </div>
+                                ))}
+                                <button onClick={() => addArrayField('meds')} className="text-blue-600 text-sm hover:underline">+ Agregar medicamento</button>
+                            </div>
+
+                            {/* Exámenes */}
+                            <div>
+                                <h4 className="font-bold text-gray-700 mb-2">Exámenes</h4>
+                                {c.treatment.exams.map((exam, i) => (
+                                    <div key={i} className="mb-2">
+                                        <input
+                                            type="text"
+                                            value={exam}
+                                            onChange={e => handleArrayFieldChange('exams', i, e.target.value)}
+                                            placeholder="Examen..."
+                                            className={isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500')}
+                                        />
+                                    </div>
+                                ))}
+                                <button onClick={() => addArrayField('exams')} className="text-blue-600 text-sm hover:underline">+ Agregar examen</button>
+                            </div>
+
+                            {/* Normas */}
+                            <div>
+                                <h4 className="font-bold text-gray-700 mb-2">Normas e Indicaciones</h4>
+                                {c.treatment.norms.map((norm, i) => (
+                                    <div key={i} className="mb-2">
+                                        <input
+                                            type="text"
+                                            value={norm}
+                                            onChange={e => handleArrayFieldChange('norms', i, e.target.value)}
+                                            placeholder="Indicación..."
+                                            className={isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500')}
+                                        />
+                                    </div>
+                                ))}
+                                <button onClick={() => addArrayField('norms')} className="text-blue-600 text-sm hover:underline">+ Agregar indicación</button>
+                            </div>
+                        </div>
+                    </Section>
+                )}
+
+                {/* Orden Médica Section */}
+                {role !== 'assistant' && (
+                    <Section title="Orden Médica">
+                        {/* Toolbar to add orders */}
+                        <div className="flex flex-wrap gap-3 mb-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <button
+                                onClick={() => addMedicalOrder('prescription')}
+                                className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-700 transition flex items-center gap-2"
+                            >
+                                <Plus size={16} /> Receta
+                            </button>
+
+                            <div className="relative group">
+                                <button className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition flex items-center gap-2">
+                                    <Plus size={16} /> Laboratorio
+                                </button>
+                                {/* Bridge to prevent closing on hover */}
+                                <div className="absolute top-full left-0 w-full h-4 bg-transparent z-10 hidden group-hover:block -mt-2"></div>
+                                <div className="absolute top-full left-0 mt-0 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-20 hidden group-hover:block">
+                                    <button onClick={() => addMedicalOrder('lab_general')} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700">General</button>
+                                    <button onClick={() => addMedicalOrder('lab_basic', PANEL_BASICO_PRESET)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700">Panel Básico</button>
+                                    <button onClick={() => addMedicalOrder('lab_extended', PANEL_AMPLIADO_PRESET)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700">Panel Ampliado</button>
+                                    <button onClick={() => addMedicalOrder('lab_feces', PANEL_HECES_PRESET)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700">Panel Heces</button>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => addMedicalOrder('image')}
+                                className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-purple-700 transition flex items-center gap-2"
+                            >
+                                <Plus size={16} /> Imágenes
+                            </button>
+
+                            <button
+                                onClick={() => addMedicalOrder('endoscopy')}
+                                className="bg-amber-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-amber-700 transition flex items-center gap-2"
+                            >
+                                <Plus size={16} /> Endoscopia
+                            </button>
                         </div>
 
-                        <div>
-                            <h4 className="font-bold text-gray-700 mb-2">Medicamentos</h4>
-                            {c.treatment.meds.map((med, i) => (
-                                <div key={i} className="mb-2">
-                                    <input
-                                        type="text"
-                                        value={med}
-                                        onChange={e => handleArrayFieldChange('meds', i, e.target.value)}
-                                        placeholder="Medicamento, dosis, frecuencia..."
-                                        className={INPUT_CLASS}
-                                    />
+                        {/* List of Orders */}
+                        <div className="space-y-6">
+                            {(c.medicalOrders || []).map((order, i) => (
+                                <div key={order.id} className="relative bg-white border-2 border-gray-100 rounded-xl p-4 shadow-sm group">
+                                    <button
+                                        onClick={() => removeMedicalOrder(order.id)}
+                                        className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+
+                                    <div className="mb-4 flex items-center gap-2">
+                                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${order.type === 'prescription' ? 'bg-emerald-100 text-emerald-700' :
+                                            order.type.startsWith('lab') ? 'bg-blue-100 text-blue-700' :
+                                                order.type === 'image' ? 'bg-purple-100 text-purple-700' :
+                                                    'bg-amber-100 text-amber-700'
+                                            }`}>
+                                            {order.type === 'prescription' ? 'Receta' :
+                                                order.type === 'lab_general' ? 'Laboratorio General' :
+                                                    order.type === 'lab_basic' ? 'Panel Básico' :
+                                                        order.type === 'lab_extended' ? 'Panel Ampliado' :
+                                                            order.type === 'lab_feces' ? 'Panel Heces' :
+                                                                order.type === 'image' ? 'Orden Imágenes' : 'Orden Endoscopia'}
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <div>
+                                            <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Diagnóstico</label>
+                                            <input
+                                                type="text"
+                                                value={order.diagnosis}
+                                                onChange={e => updateMedicalOrder(order.id, 'diagnosis', e.target.value)}
+                                                className={INPUT_CLASS}
+                                                placeholder="Diagnóstico..."
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs uppercase font-bold text-gray-500 mb-1">
+                                                {order.type === 'prescription' ? 'Medicamentos e Indicaciones' :
+                                                    order.type === 'lab_basic' ? 'Panel Básico' :
+                                                        order.type === 'lab_extended' ? 'Panel Ampliado' :
+                                                            order.type === 'lab_feces' ? 'Panel Heces' :
+                                                                order.type.startsWith('lab') ? 'Exámenes Solicitados' :
+                                                                    order.type === 'image' ? 'Estudios de Imagen' : 'Procedimiento Endoscópico'}
+                                            </label>
+                                            <textarea
+                                                value={order.content}
+                                                onChange={e => updateMedicalOrder(order.id, 'content', e.target.value)}
+                                                className={INPUT_CLASS}
+                                                rows={order.type.startsWith('lab') ? 8 : 4}
+                                                placeholder="Detalles..."
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
-                            <button onClick={() => addArrayField('meds')} className="text-blue-600 text-sm hover:underline">+ Agregar medicamento</button>
                         </div>
+                    </Section>
+                )}
 
-                        <div>
-                            <h4 className="font-bold text-gray-700 mb-2">Exámenes a solicitar</h4>
-                            {c.treatment.exams.map((exam, i) => (
-                                <div key={i} className="mb-2">
-                                    <input
-                                        type="text"
-                                        value={exam}
-                                        onChange={e => handleArrayFieldChange('exams', i, e.target.value)}
-                                        placeholder="Examen..."
-                                        className={INPUT_CLASS}
-                                    />
-                                </div>
-                            ))}
-                            <button onClick={() => addArrayField('exams')} className="text-blue-600 text-sm hover:underline">+ Agregar examen</button>
-                        </div>
 
-                        <div>
-                            <h4 className="font-bold text-gray-700 mb-2">Normas e Indicaciones</h4>
-                            {c.treatment.norms.map((norm, i) => (
-                                <div key={i} className="mb-2">
-                                    <input
-                                        type="text"
-                                        value={norm}
-                                        onChange={e => handleArrayFieldChange('norms', i, e.target.value)}
-                                        placeholder="Indicación..."
-                                        className={INPUT_CLASS}
-                                    />
-                                </div>
-                            ))}
-                            <button onClick={() => addArrayField('norms')} className="text-blue-600 text-sm hover:underline">+ Agregar indicación</button>
-                        </div>
-                    </div>
-                </Section>
-
-                {/* Botón Guardar */}
-                <div className="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200 p-4 flex justify-center md:justify-end shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 flex items-center gap-2 shadow-lg shadow-blue-600/20 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {saving ? (
-                            <>
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                Guardando...
-                            </>
-                        ) : (
-                            <>
-                                <Save size={20} /> Guardar Consulta
-                            </>
-                        )}
-                    </button>
-                </div>
+                {/* Floating Save Button - Elegant & Compact */}
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className={`fixed bottom-8 right-8 ${isOnline ? 'bg-slate-900 shadow-xl' : 'bg-red-600 shadow-red-600/30'} text-white px-6 py-3 rounded-full font-semibold hover:scale-105 active:scale-95 transition-all duration-300 z-50 flex items-center gap-2 ring-1 ring-white/20 backdrop-blur-md`}
+                >
+                    {isOnline ? (
+                        <Save size={20} className={saving ? "animate-spin" : ""} />
+                    ) : (
+                        <WifiOff size={20} />
+                    )}
+                    <span className="tracking-wide">
+                        {saving ? '...' : (isOnline ? 'Guardar' : 'Guardar en Local')}
+                    </span>
+                </button>
             </div>
-        </div>
+        </div >
     );
 };

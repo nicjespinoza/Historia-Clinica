@@ -21,9 +21,12 @@ const PageLoader = () => (
     </div>
 );
 
+import { NetworkStatus } from './components/ui/NetworkStatus';
+
 const App = () => {
     return (
         <Suspense fallback={<PageLoader />}>
+            <NetworkStatus />
             <Routes>
                 {/* Public Routes - Eager Loaded */}
                 <Route path="/" element={<CenlaePage />} />

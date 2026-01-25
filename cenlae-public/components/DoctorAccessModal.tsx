@@ -11,8 +11,8 @@ interface DoctorAccessModalProps {
 
 export const DoctorAccessModal = ({ isOpen, onClose }: DoctorAccessModalProps) => {
     // Redirect URLs - pointing to the private app
-    const DOCTOR_LOGIN_URL = 'https://medirecord-pro-c84d0.web.app/app/doctor/login';
-    const ASSISTANT_LOGIN_URL = 'https://medirecord-pro-c84d0.web.app/app/doctor/login'; // Usually same login page for now
+    const DOCTOR_LOGIN_URL = `${process.env.NEXT_PUBLIC_APP_URL}/doctor/login`;
+    const ASSISTANT_LOGIN_URL = `${process.env.NEXT_PUBLIC_APP_URL}/doctor/login`; // Usually same login page for now
 
     return (
         <AnimatePresence>

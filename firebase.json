@@ -1,81 +1,21 @@
 {
-    "hosting": [
-        {
-            "target": "app",
-            "public": "dist",
-            "ignore": [
-                "firebase.json",
-                "**/.*",
-                "**/node_modules/**"
-            ],
-            "rewrites": [
-                {
-                    "source": "**",
-                    "destination": "/index.html"
-                }
-            ],
-            "headers": [
-                {
-                    "source": "**",
-                    "headers": [
-                        {
-                            "key": "X-Content-Type-Options",
-                            "value": "nosniff"
-                        },
-                        {
-                            "key": "X-Frame-Options",
-                            "value": "DENY"
-                        },
-                        {
-                            "key": "X-XSS-Protection",
-                            "value": "1; mode=block"
-                        },
-                        {
-                            "key": "Strict-Transport-Security",
-                            "value": "max-age=31536000; includeSubDomains; preload"
-                        },
-                        {
-                            "key": "Referrer-Policy",
-                            "value": "strict-origin-when-cross-origin"
-                        },
-                        {
-                            "key": "Permissions-Policy",
-                            "value": "geolocation=(), microphone=(self), camera=(self)"
-                        },
-                        {
-                            "key": "Content-Security-Policy",
-                            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.firebaseapp.com https://*.googleapis.com https://www.gstatic.com https://www.google.com https://meet.jit.si; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.wixstatic.com https://*.googleusercontent.com https://*.firebase.com https://meet.jit.si https://maps.gstatic.com https://maps.google.com; media-src 'self' blob: https://*.wixstatic.com https://video.wixstatic.com; connect-src 'self' blob: https://*.firebaseio.com https://*.googleapis.com https://*.cloudfunctions.net wss://*.firebaseio.com wss://meet.jit.si https://meet.jit.si https://*.wixstatic.com; frame-src https://*.firebaseapp.com https://www.google.com https://maps.google.com https://*.google.com https://meet.jit.si;"
-                        }
-                    ]
-                },
-                {
-                    "source": "**/*.@(js|css|map)",
-                    "headers": [
-                        {
-                            "key": "Cache-Control",
-                            "value": "public, max-age=31536000, immutable"
-                        }
-                    ]
-                },
-                {
-                    "source": "**/*.@(jpg|jpeg|gif|png|svg|webp|ico)",
-                    "headers": [
-                        {
-                            "key": "Cache-Control",
-                            "value": "public, max-age=31536000, immutable"
-                        }
-                    ]
-                }
-            ]
+    "hosting": {
+        "source": "cenlae-public",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "frameworksBackend": {
+            "region": "us-central1"
         },
-        {
-            "target": "web",
-            "source": "cenlae-public",
-            "frameworksBackend": {
-                "region": "us-central1"
+        "rewrites": [
+            {
+                "source": "/app/**",
+                "destination": "/app/index.html"
             }
-        }
-    ],
+        ]
+    },
     "firestore": {
         "rules": "firestore.rules",
         "indexes": "firestore.indexes.json"

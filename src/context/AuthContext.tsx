@@ -9,13 +9,30 @@ import {
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
+export type UserRole = 'admin' | 'doctor' | 'assistant' | 'patient';
+
+// Frontend definitions of permissions (synced with Backend)
+const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+    patient: ["patient:read_own", "appointment:read_own"],
+    doctor: ["*"], // Wildcard for super admin
+    assistant: [
+        "patient:read",
+        "patient:create",
+        "patient:update",
+        "appointment:manage",
+        "consult:create_vitals"
+    ],
+    admin: ["*"]
+};
+
 interface AuthContextType {
     currentUser: User | null;
+    role: UserRole | null; // New
     loading: boolean;
-    // Actualizamos los tipos para que devuelvan UserCredential
     signIn: (email: string, pass: string) => Promise<UserCredential>;
     signUp: (email: string, pass: string) => Promise<UserCredential>;
     logout: () => Promise<void>;
+    hasPermission: (permission: string) => boolean; // New
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,11 +47,29 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [role, setRole] = useState<UserRole | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
+
+            if (user) {
+                // 1. Try to get role from Custom Claims
+                const tokenResult = await user.getIdTokenResult();
+                let assignedRole = tokenResult.claims.role as UserRole;
+
+                // 2. FALLBACK: Hardcoded emails for immediate testing
+                if (!assignedRole) {
+                    if (user.email === 'dr@cenlae.com') assignedRole = 'doctor';
+                    else if (user.email === 'asistente@cenlae.com') assignedRole = 'assistant';
+                    else assignedRole = 'patient';
+                }
+                setRole(assignedRole);
+            } else {
+                setRole(null);
+            }
+
             setLoading(false);
         });
         return unsubscribe;
@@ -51,14 +86,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const logout = async () => {
         await signOut(auth);
+        setRole(null);
+    };
+
+    const hasPermission = (permission: string): boolean => {
+        if (!role) return false;
+
+        // Admin/Doctor wildcard
+        if (role === 'admin' || role === 'doctor') return true;
+
+        const permissions = ROLE_PERMISSIONS[role] || [];
+        return permissions.includes(permission);
     };
 
     const value = {
         currentUser,
+        role,
         loading,
         signIn,
         signUp,
-        logout
+        logout,
+        hasPermission
     };
 
     return (

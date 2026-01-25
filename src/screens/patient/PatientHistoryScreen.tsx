@@ -146,6 +146,29 @@ export const PatientHistoryScreen = () => {
         }
     }, [navigate]);
 
+    // REAL-TIME PRESENCE LOGIC
+    useEffect(() => {
+        if (!patient?.id) return;
+
+        // 1. Set online on mount
+        api.updatePatient(patient.id, { isOnline: true }).catch(console.error);
+
+        // 2. Set offline on unmount
+        return () => {
+            api.updatePatient(patient.id, { isOnline: false }).catch(console.error);
+        };
+    }, [patient?.id]);
+
+    // 3. Handle tab close
+    useEffect(() => {
+        if (!patient?.id) return;
+        const handleBeforeUnload = () => {
+            api.updatePatient(patient.id, { isOnline: false });
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [patient?.id]);
+
     const [h, setH] = useState<InitialHistory>({
         id: Math.random().toString(36),
         patientId: '',

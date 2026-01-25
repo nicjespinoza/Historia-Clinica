@@ -16,10 +16,18 @@ const firebaseConfig = {
     measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// ============================================================
+// Initialize Firestore with Offline Persistence
+// Uses persistentLocalCache for offline support (modern SDK approach)
+export const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+    })
+});
 // FIREBASE APP CHECK - Anti-Bots & DDoS Protection
 // ============================================================
 // INSTRUCCIONES PARA ACTIVAR:
@@ -49,6 +57,6 @@ if (import.meta.env.PROD && RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY.startsWith(
 
 // Export services
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// export const db = getFirestore(app); // Already initialized above
 export const storage = getStorage(app);
 export const functions = getFunctions(app);

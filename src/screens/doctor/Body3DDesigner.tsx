@@ -18,7 +18,7 @@ function StomachModel({
     observations?: any[],
     onDeleteObservation: (id: string) => void
 }) {
-    const { scene } = useGLTF('/models/stomach.glb');
+    const { scene } = useGLTF('/app/models/stomach.glb');
     const [selectedObsId, setSelectedObsId] = useState<string | null>(null);
 
     // TRUCO PRO: Habilitar visión interna
@@ -134,7 +134,7 @@ function StomachModel({
     );
 }
 
-useGLTF.preload('/models/stomach.glb');
+useGLTF.preload('/app/models/stomach.glb');
 
 // --- 2. PANTALLA PRINCIPAL ---
 export const Body3DDesigner = () => {

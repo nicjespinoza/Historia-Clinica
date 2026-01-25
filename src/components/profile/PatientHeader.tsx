@@ -17,6 +17,8 @@ interface PatientHeaderProps {
     setActiveTab: (tab: 'general' | 'consents') => void;
 }
 
+import { useAuth } from '../../context/AuthContext';
+
 export const PatientHeader: React.FC<PatientHeaderProps> = ({
     patient,
     navigate,
@@ -29,6 +31,9 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
     activeTab,
     setActiveTab
 }) => {
+    const { role } = useAuth();
+    const isAssistant = role === 'assistant';
+
     return (
         <div className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-100/50 shadow-sm">
             <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
@@ -54,16 +59,27 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
 
                     {/* Quick Actions Bar - Futuristic & Icon Based */}
                     <div className="flex items-center gap-3 bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100">
-                        <ActionButton icon={<Brain size={18} />} label="IA" onClick={onAIAnalysis} color="indigo" />
-                        <div className="w-px h-6 bg-gray-200 mx-1" />
+                        {!isAssistant && (
+                            <>
+                                <ActionButton icon={<Brain size={18} />} label="IA" onClick={onAIAnalysis} color="indigo" />
+                                <div className="w-px h-6 bg-gray-200 mx-1" />
+                            </>
+                        )}
                         <ActionButton icon={<Calendar size={18} />} label="Cita" onClick={onShowAppointment} color="blue" />
                         <div className="w-px h-6 bg-gray-200 mx-1" />
-                        <ActionButton icon={<StickyNote size={18} />} label="Notas" onClick={onShowNotes} color="amber" />
-                        <ActionButton icon={<Eye size={18} />} label="Ver" onClick={onViewNotes} color="amber" />
-                        <div className="w-px h-6 bg-gray-200 mx-1" />
+
+                        {!isAssistant && (
+                            <>
+                                <ActionButton icon={<StickyNote size={18} />} label="Notas" onClick={onShowNotes} color="amber" />
+                                <ActionButton icon={<Eye size={18} />} label="Ver" onClick={onViewNotes} color="amber" />
+                                <div className="w-px h-6 bg-gray-200 mx-1" />
+                            </>
+                        )}
+
                         <ActionButton icon={<Activity size={18} />} label="Endo" onClick={onShowEndoscopic} color="teal" />
                         <ActionButton icon={<Eye size={18} />} label="Ver" onClick={onViewEndoscopic} color="teal" />
                         <div className="w-px h-6 bg-gray-200 mx-1" />
+
                         <ActionButton icon={<PenTool size={18} />} label="Firmas" onClick={() => setActiveTab(activeTab === 'general' ? 'consents' : 'general')} active={activeTab === 'consents'} color="gray" />
                     </div>
                 </div>

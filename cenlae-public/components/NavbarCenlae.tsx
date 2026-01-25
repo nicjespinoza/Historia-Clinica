@@ -100,7 +100,7 @@ export const NavbarCenlae = ({ activePage = 'inicio' }: NavbarCenlaeProps) => {
                             Based on plan: Cross-App links.
                         */}
                         <a
-                            href="https://medirecord-pro-c84d0.web.app/app/patient/login"
+                            href={`${process.env.NEXT_PUBLIC_APP_URL}/patient/login`}
                             className="bg-black text-white px-6 py-2 rounded text-sm font-semibold hover:bg-cenlae-primary transition-colors"
                         >
                             Acceso pacientes
@@ -162,7 +162,7 @@ export const NavbarCenlae = ({ activePage = 'inicio' }: NavbarCenlaeProps) => {
                                 </div>
                             ))}
                             <a
-                                href="https://medirecord-pro-c84d0.web.app/app/patient/login"
+                                href={`${process.env.NEXT_PUBLIC_APP_URL}/patient/login`}
                                 className="block w-full text-center bg-gray-100 text-gray-500 px-6 py-3 rounded text-sm font-semibold mt-4"
                             >
                                 Acceso pacientes

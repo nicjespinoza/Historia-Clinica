@@ -5,9 +5,15 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
+    base: '/app/',
     server: {
-      port: 3000,
+      port: 4000,
       host: '0.0.0.0',
+      hmr: {
+        path: '/app/',
+        clientPort: 4000,
+      },
+      cors: true,
     },
     plugins: [react()],
     define: {
@@ -20,7 +26,9 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
-      outDir: 'dist',
+      // Output to the Next.js public folder so it's served as static assets
+      outDir: 'cenlae-public/public/app',
+      emptyOutDir: true,
       sourcemap: false,
       minify: 'esbuild',
       rollupOptions: {
