@@ -483,7 +483,20 @@ export const getDefaultInitialHistoryValues = (patientId: string): InitialHistor
     familyGastro: { yes: false, no: false, list: {}, other: '' },
     physicalExam: {
         fc: '', fr: '', temp: '', pa: '', pam: '', sat02: '', weight: '', height: '', imc: '',
-        systems: {},
+        systems: {
+            "Piel y anexos": { normal: true, abnormal: false, description: '' },
+            "Cabeza": { normal: true, abnormal: false, description: '' },
+            "Cuello": { normal: true, abnormal: false, description: '' },
+            "Torax": { normal: true, abnormal: false, description: '' },
+            "Cardiaco": { normal: true, abnormal: false, description: '' },
+            "Pulmonar": { normal: true, abnormal: false, description: '' },
+            "Abdomen": { normal: true, abnormal: false, description: '' },
+            "Miembros superiores": { normal: true, abnormal: false, description: '' },
+            "Miembros inferiores": { normal: true, abnormal: false, description: '' },
+            "Neurologico": { normal: true, abnormal: false, description: '' },
+            "Genitales": { normal: true, abnormal: false, description: '' },
+            "Tacto Rectal": { normal: true, abnormal: false, description: '' }
+        },
     },
     previousStudies: { yes: false, no: false, description: '' },
     comments: '',

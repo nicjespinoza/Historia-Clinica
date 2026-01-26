@@ -5,12 +5,12 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: '/app/',
+    base: '/',
     server: {
       port: 4000,
       host: '0.0.0.0',
       hmr: {
-        path: '/app/',
+        path: '/',
         clientPort: 4000,
       },
       cors: true,
@@ -26,8 +26,8 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
-      // Output to the Next.js public folder so it's served as static assets
-      outDir: 'cenlae-public/public/app',
+      // Output to the Next.js public folder root
+      outDir: 'cenlae-public/public',
       emptyOutDir: true,
       sourcemap: false,
       minify: 'esbuild',

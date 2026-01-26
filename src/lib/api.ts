@@ -1,5 +1,6 @@
 import { Patient, InitialHistory, SubsequentConsult, Appointment } from '../types';
-import { db } from './firebase';
+import { db, auth } from './firebase';
+import { offlineQueue } from './offlineQueue';
 import { logAudit } from './audit';
 import {
     collection,
@@ -276,6 +277,18 @@ export const api = {
     },
 
     createHistory: async (data: Omit<InitialHistory, 'id'>): Promise<InitialHistory> => {
+        // OFFLINE INTERCEPTION
+        if (!navigator.onLine) {
+            const userEmail = auth.currentUser?.email || null;
+            if (offlineQueue.canUseOfflineMode(userEmail)) {
+                offlineQueue.enqueueAction('CREATE_HISTORY', data, userEmail);
+                return {
+                    id: `temp-offline-${Date.now()}`,
+                    ...data
+                } as InitialHistory;
+            }
+        }
+
         // Always save new histories to the subcollection
         const docRef = await addDoc(collection(db, 'patients', data.patientId, 'histories'), data);
         // Wrap audit in try-catch to ensure main action succeeds even if audit fails/queues weirdly
@@ -399,6 +412,18 @@ export const api = {
     },
 
     createConsult: async (data: Omit<SubsequentConsult, 'id'>): Promise<SubsequentConsult> => {
+        // OFFLINE INTERCEPTION
+        if (!navigator.onLine) {
+            const userEmail = auth.currentUser?.email || null;
+            if (offlineQueue.canUseOfflineMode(userEmail)) {
+                offlineQueue.enqueueAction('CREATE_CONSULT', data, userEmail);
+                return {
+                    id: `temp-offline-${Date.now()}`,
+                    ...data
+                } as SubsequentConsult;
+            }
+        }
+
         const docRef = await addDoc(collection(db, 'patients', data.patientId, 'consults'), data);
         try {
             await logAudit({
@@ -566,6 +591,19 @@ export const api = {
     },
 
     createAppointment: async (data: Omit<Appointment, 'id'>): Promise<Appointment> => {
+        // OFFLINE INTERCEPTION
+        if (!navigator.onLine) {
+            const userEmail = auth.currentUser?.email || null;
+            if (offlineQueue.canUseOfflineMode(userEmail)) {
+                offlineQueue.enqueueAction('CREATE_APPOINTMENT', data, userEmail);
+                return {
+                    id: `temp-offline-${Date.now()}`,
+                    uniqueId: `OFFLINE-${Date.now()}`,
+                    ...data
+                } as Appointment;
+            }
+        }
+
         const uniqueId = `CITA-${Date.now()}`;
         const docRef = await addDoc(collection(db, 'appointments'), {
             ...data,

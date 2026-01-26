@@ -15,6 +15,39 @@ import { initialHistorySchema, InitialHistoryFormData, getDefaultInitialHistoryV
 const INPUT_CLASS = "w-full px-4 py-2.5 bg-gray-50 border-2 border-black text-gray-800 text-sm rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 block transition-all duration-200 outline-none placeholder-gray-400 hover:bg-white";
 const SECTION_TITLE_CLASS = "text-xl font-bold text-gray-800 mb-6 flex items-center gap-2";
 
+// Helper for exclusive Yes/No/NA toggles
+const handleExclusiveChange = (current: any, key: string, value: boolean) => {
+    const newState = { ...current, [key]: value };
+    // If turning ON, disable others
+    if (value) {
+        if (key === 'yes') {
+            newState.no = false;
+            if (newState.na !== undefined) newState.na = false;
+        } else if (key === 'no') {
+            newState.yes = false;
+            if (newState.na !== undefined) newState.na = false;
+        } else if (key === 'na') {
+            newState.yes = false;
+            newState.no = false;
+        }
+    } else {
+        // If turning OFF "yes" or "no", consider if we should auto-select the other? 
+        // User didn't request that, but usually "If Yes is uncheck, does it mean No?"
+        // Sticking to user request: "Si selecciono Si y despues No el check Si se mantiene seleccionado no se deselecciona" -> Wait.
+        // User text: "Si selecciono Si y despues No el check Si se mantiene seleccionado no se deselecciona"
+        // Wait, user said: "si selecciono Si y despues No el check Si se mantiene seleccionado no se deselecciona" -> This implies they WANT the current behavior?
+        // NO, "quiero q hagan lo siguiente si selecciono Si y despues No el check Si se mantiene seleccionado no se deselecciona"
+        // This is confusing. "selecciono Si" -> Yes=True. "despues No" -> No=True. "el check Si se mantiene seleccionado".
+        // This describes the CURRENT broken state (both are true).
+        // User probably meant: "Current behavior is: Si stays selected. I WANT: one to deselect the other".
+        // Context: "Ahora en los check q son Si y No quiero q hagan lo siguiente si selecciono Si y despues No el check Si se mantiene seleccionado no se deselecciona"
+        // This reads like a bug report. "When I select Yes then No, Yes stays selected (it doesn't deselect). I WANT them to be exclusive." (Implicit).
+        // Or if they literally want both selected, that creates invalid state.
+        // Given standard UI patterns, I assume they want exclusivity.
+    }
+    return newState;
+};
+
 const PANEL_BASICO_PRESET = `1. BHC
 2. Glicemina
 3. Creatimina
@@ -137,7 +170,7 @@ const GroupSectionRHF = memo(({
 
     const handleYesNoChange = useCallback((k: string, v: boolean) => {
         const current = getValues(groupKey as any) as any;
-        setValue(groupKey as any, { ...current, [k]: v }, { shouldDirty: true });
+        setValue(groupKey as any, handleExclusiveChange(current, k, v), { shouldDirty: true });
     }, [groupKey, setValue, getValues]);
 
     const handleListChange = useCallback((k: string, v: boolean) => {
@@ -243,21 +276,45 @@ export const InitialHistoryScreen = () => {
             normalized.date = normalized.date.split('T')[0];
         }
 
+        // FIX: Mapping legacy fields (Comments)
+        if (!normalized.comments) {
+            normalized.comments = (normalized as any).generalComments || (normalized as any).observaciones || (normalized as any).notes || '';
+        }
+
         // FIX: Ensure physicalExam has all fields to prevent uncontrolled inputs
         if (normalized.physicalExam) {
             const peDefaults = {
                 fc: '', fr: '', temp: '', pa: '', pam: '', sat02: '', weight: '', height: '', imc: '',
                 systems: C.SYSTEMS_LIST.reduce((acc, sys) => ({
-                    ...acc, [sys]: { normal: false, abnormal: false, description: '' }
+                    ...acc, [sys]: { normal: true, abnormal: false, description: '' }
                 }), {})
             };
+
+            // Normalized existing systems (Case Insensitive Fix)
+            if (normalized.physicalExam.systems) {
+                const existingKeys = Object.keys(normalized.physicalExam.systems);
+                C.SYSTEMS_LIST.forEach(canonicalSys => {
+                    // Find if there is a matching key (case insensitive)
+                    const matchKey = existingKeys.find(k => k.toLowerCase() === canonicalSys.toLowerCase());
+                    if (matchKey && matchKey !== canonicalSys) {
+                        // Move data to canonical key
+                        normalized.physicalExam.systems[canonicalSys] = normalized.physicalExam.systems[matchKey];
+                        delete normalized.physicalExam.systems[matchKey];
+                    }
+                });
+            }
+
             normalized.physicalExam = { ...peDefaults, ...normalized.physicalExam };
-            // Ensure nested systems defaults
+            // Ensure nested systems defaults and logic
             if (normalized.physicalExam.systems) {
                 // Ensure every system key exists
                 C.SYSTEMS_LIST.forEach((sys: string) => { // Explicit type for sys
                     if (!normalized.physicalExam.systems[sys]) {
-                        normalized.physicalExam.systems[sys] = { normal: false, abnormal: false, description: '' };
+                        normalized.physicalExam.systems[sys] = { normal: true, abnormal: false, description: '' };
+                    }
+                    // FIX: If abnormal is TRUE, ensure normal is FALSE (migrated data fix)
+                    if (normalized.physicalExam.systems[sys].abnormal) {
+                        normalized.physicalExam.systems[sys].normal = false;
                     }
                 });
             }
@@ -583,7 +640,7 @@ export const InitialHistoryScreen = () => {
                         onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
                     />
                     <div className="bg-white rounded-t-2xl border-b border-gray-200 mb-8 shadow-sm relative p-6">
-                        <button type="button" onClick={() => navigate(-1)} className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+                        <button type="button" onClick={() => navigate(-1)} className="absolute top-6 right-6 p-2 bg-[#083c79] text-white hover:bg-[#062a55] rounded-full transition-colors shadow-md z-10">
                             <ArrowLeft size={24} />
                         </button>
                         <h2 className="text-3xl font-bold text-gray-900 mb-2">Historia Clínica Inicial</h2>
@@ -679,7 +736,7 @@ export const InitialHistoryScreen = () => {
                         <YesNo
                             label="Enfermedades pre existentes"
                             value={preExistingDiseases}
-                            onChange={(k, v) => setValue('preExistingDiseases', { ...preExistingDiseases, [k]: v })}
+                            onChange={(k, v) => setValue('preExistingDiseases', handleExclusiveChange(preExistingDiseases, k, v))}
                         />
                         {preExistingDiseases?.yes && (
                             <div className="mt-6 space-y-2">
@@ -710,7 +767,7 @@ export const InitialHistoryScreen = () => {
                             <YesNo
                                 label="Antecedentes Ginecologicos"
                                 value={gyneco}
-                                onChange={(k, v) => setValue('gyneco', { ...gyneco, [k]: v })}
+                                onChange={(k, v) => setValue('gyneco', handleExclusiveChange(gyneco, k, v))}
                             />
                             {gyneco?.yes && (
                                 <div className="bg-gray-50/50 p-6 rounded-xl border border-gray-200/50 mt-4 space-y-6">
@@ -752,11 +809,11 @@ export const InitialHistoryScreen = () => {
                                         )}
                                     />
 
-                                    <YesNo label="Diabetes gestacional" value={gyneco.gestationalDiabetes} onChange={(k, v) => setValue('gyneco', { ...gyneco, gestationalDiabetes: { ...gyneco.gestationalDiabetes, [k]: v } })} />
-                                    <YesNo label="Preclampsia" value={gyneco.preeclampsia} onChange={(k, v) => setValue('gyneco', { ...gyneco, preeclampsia: { ...gyneco.preeclampsia, [k]: v } })} />
-                                    <YesNo label="Eclampsia" value={gyneco.eclampsia} onChange={(k, v) => setValue('gyneco', { ...gyneco, eclampsia: { ...gyneco.eclampsia, [k]: v } })} />
-                                    <YesNo label="Sospecha de embarazo" value={gyneco.pregnancySuspicion} onChange={(k, v) => setValue('gyneco', { ...gyneco, pregnancySuspicion: { ...gyneco.pregnancySuspicion, [k]: v } })} />
-                                    <YesNo label="Lactancia materna actual" value={gyneco.breastfeeding} onChange={(k, v) => setValue('gyneco', { ...gyneco, breastfeeding: { ...gyneco.breastfeeding, [k]: v } })} />
+                                    <YesNo label="Diabetes gestacional" value={gyneco.gestationalDiabetes} onChange={(k, v) => setValue('gyneco', { ...gyneco, gestationalDiabetes: handleExclusiveChange(gyneco.gestationalDiabetes, k, v) })} />
+                                    <YesNo label="Preclampsia" value={gyneco.preeclampsia} onChange={(k, v) => setValue('gyneco', { ...gyneco, preeclampsia: handleExclusiveChange(gyneco.preeclampsia, k, v) })} />
+                                    <YesNo label="Eclampsia" value={gyneco.eclampsia} onChange={(k, v) => setValue('gyneco', { ...gyneco, eclampsia: handleExclusiveChange(gyneco.eclampsia, k, v) })} />
+                                    <YesNo label="Sospecha de embarazo" value={gyneco.pregnancySuspicion} onChange={(k, v) => setValue('gyneco', { ...gyneco, pregnancySuspicion: handleExclusiveChange(gyneco.pregnancySuspicion, k, v) })} />
+                                    <YesNo label="Lactancia materna actual" value={gyneco.breastfeeding} onChange={(k, v) => setValue('gyneco', { ...gyneco, breastfeeding: handleExclusiveChange(gyneco.breastfeeding, k, v) })} />
                                 </div>
                             )}
                         </MemoizedSection>
@@ -766,7 +823,7 @@ export const InitialHistoryScreen = () => {
                     <MemoizedSection title="II. MEDICAMENTOS">
                         {/* De uso crónico */}
                         <div className="py-4 border-b-2 border-gray-900">
-                            <YesNo label="De uso crónico" value={regularMeds} onChange={(k, v) => setValue('regularMeds', { ...regularMeds, [k]: v })} />
+                            <YesNo label="De uso crónico" value={regularMeds} onChange={(k, v) => setValue('regularMeds', handleExclusiveChange(regularMeds, k, v))} />
                             {regularMeds?.yes && (
                                 <div className="mt-4">
                                     <Controller
@@ -789,7 +846,7 @@ export const InitialHistoryScreen = () => {
 
                         {/* Naturales o suplementos */}
                         <div className="py-4 border-b-2 border-gray-900">
-                            <YesNo label="Naturales o suplementos" value={naturalMeds} onChange={(k, v) => setValue('naturalMeds', { ...naturalMeds, [k]: v })} />
+                            <YesNo label="Naturales o suplementos" value={naturalMeds} onChange={(k, v) => setValue('naturalMeds', handleExclusiveChange(naturalMeds, k, v))} />
                             {naturalMeds?.yes && (
                                 <div className="mt-4">
                                     <Controller
@@ -812,8 +869,8 @@ export const InitialHistoryScreen = () => {
                     {/* ==================== III. CIRUGÍAS U HOSPITALIZACIONES ==================== */}
                     <MemoizedSection title="III. CIRUGÍAS U HOSPITALIZACIONES">
                         {/* Cirugías y Hospitalizaciones previas - Combinado */}
-                        <div className="py-4 border-b-2 border+gray-900">
-                            <YesNo label="Cirugías y Hospitalizaciones previas" value={surgeries} onChange={(k, v) => setValue('surgeries', { ...surgeries, [k]: v })} />
+                        <div className="py-4 border-b-2 border-gray-900">
+                            <YesNo label="Cirugías y Hospitalizaciones previas" value={surgeries} onChange={(k, v) => setValue('surgeries', handleExclusiveChange(surgeries, k, v))} />
                             {surgeries?.yes && (
                                 <div className="mt-4">
                                     <Controller
@@ -836,7 +893,7 @@ export const InitialHistoryScreen = () => {
 
                         {/* Procedimientos endoscópicos previos */}
                         <div className="py-4 border-b-2 border-gray-900">
-                            <YesNo label="Procedimientos endoscópicos previos" value={endoscopy} onChange={(k, v) => setValue('endoscopy', { ...endoscopy, [k]: v })} />
+                            <YesNo label="Procedimientos endoscópicos previos" value={endoscopy} onChange={(k, v) => setValue('endoscopy', handleExclusiveChange(endoscopy, k, v))} />
                             {endoscopy?.yes && (
                                 <div className="mt-4 space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -875,7 +932,7 @@ export const InitialHistoryScreen = () => {
 
                         {/* Implantes o prótesis intracorpóreos */}
                         <div className="py-4 border-b-2 border-gray-900">
-                            <YesNo label="Implantes o prótesis intracorpóreos" value={implants} onChange={(k, v) => setValue('implants', { ...implants, [k]: v })} />
+                            <YesNo label="Implantes o prótesis intracorpóreos" value={implants} onChange={(k, v) => setValue('implants', handleExclusiveChange(implants, k, v))} />
                             {implants?.yes && (
                                 <div className="mt-4">
                                     <Controller
@@ -896,7 +953,7 @@ export const InitialHistoryScreen = () => {
 
                         {/* Marcapasos, desfibriladores */}
                         <div className="py-4 border-b-2 border-gray-900">
-                            <YesNo label="Marcapasos, desfibriladores, neuro estimuladores o algún otro dispositivo intracorpóreo" value={devices} onChange={(k, v) => setValue('devices', { ...devices, [k]: v })} />
+                            <YesNo label="Marcapasos, desfibriladores, neuro estimuladores o algún otro dispositivo intracorpóreo" value={devices} onChange={(k, v) => setValue('devices', handleExclusiveChange(devices, k, v))} />
                             {devices?.yes && (
                                 <div className="mt-4">
                                     <Controller
@@ -917,7 +974,7 @@ export const InitialHistoryScreen = () => {
 
                         {/* Complicaciones relacionadas */}
                         <div className="py-4 border-b-2 border-gray-900">
-                            <YesNo label="Complicaciones relacionadas a cirugías, procedimientos endoscópicos, uso de medicamentos o anestesia" value={complications} onChange={(k, v) => setValue('complications', { ...complications, [k]: v })} />
+                            <YesNo label="Complicaciones relacionadas a cirugías, procedimientos endoscópicos, uso de medicamentos o anestesia" value={complications} onChange={(k, v) => setValue('complications', handleExclusiveChange(complications, k, v))} />
                             {complications?.yes && (
                                 <div className="mt-4">
                                     <Controller
@@ -941,7 +998,7 @@ export const InitialHistoryScreen = () => {
 
                         {/* Intolerancias alimenticias */}
                         <div className="py-4 border-b-2 border-gray-900">
-                            <YesNo label="Intolerancias alimenticias" value={foodIntolerances} onChange={(k, v) => setValue('foodIntolerances', { ...foodIntolerances, [k]: v })} />
+                            <YesNo label="Intolerancias alimenticias" value={foodIntolerances} onChange={(k, v) => setValue('foodIntolerances', handleExclusiveChange(foodIntolerances, k, v))} />
                             {foodIntolerances?.yes && (
                                 <div className="mt-4 space-y-4">
                                     <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-100">
@@ -969,7 +1026,7 @@ export const InitialHistoryScreen = () => {
 
                         {/* Transfusiones Sanguíneas - Solo Sí/No */}
                         <div className="py-4 border-b-2 border-gray-900">
-                            <YesNo label="Transfusiones Sanguíneas" value={transfusions} onChange={(k, v) => setValue('transfusions', { ...transfusions, [k]: v })} />
+                            <YesNo label="Transfusiones Sanguíneas" value={transfusions} onChange={(k, v) => setValue('transfusions', handleExclusiveChange(transfusions, k, v))} />
                         </div>
 
                         {/* Exposiciones */}
@@ -1065,40 +1122,7 @@ export const InitialHistoryScreen = () => {
                     />
 
                     {/* VI. Diagnóstico (Lista Dinámica) */}
-                    <Section title="VI. Diagnóstico">
-                        <div className="space-y-3">
-                            {currentDiagnoses.map((dx, i) => (
-                                <div key={i} className="flex items-center gap-3">
-                                    <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
-                                        {i + 1}
-                                    </span>
-                                    <input
-                                        type="text"
-                                        value={dx}
-                                        onChange={e => handleDiagnosisChange(i, e.target.value)}
-                                        placeholder={`Diagnóstico ${i + 1}`}
-                                        className={isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500')}
-                                    />
-                                    {currentDiagnoses.length > 1 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => removeDiagnosis(i)}
-                                            className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                            <button
-                                type="button"
-                                onClick={addDiagnosis}
-                                className="text-blue-600 font-bold text-sm hover:underline flex items-center gap-1 mt-2"
-                            >
-                                <Plus size={16} /> Agregar diagnóstico
-                            </button>
-                        </div>
-                    </Section>
+                    {/* VI. Diagnóstico (MOVIDO MÁS ABAJO) */}
 
                     {/* VII. Plan de Tratamiento */}
                     <Section title="VII. Plan de Tratamiento">
@@ -1107,7 +1131,7 @@ export const InitialHistoryScreen = () => {
                             <YesNo
                                 label="Exámenes o estudios diagnósticos previos"
                                 value={previousStudies}
-                                onChange={(k, v) => setValue('previousStudies', { ...previousStudies, [k]: v })}
+                                onChange={(k, v) => setValue('previousStudies', handleExclusiveChange(previousStudies, k, v))}
                             />
                             {previousStudies?.yes && (
                                 <div className="mt-4 animate-in fade-in slide-in-from-top-2">
@@ -1129,10 +1153,65 @@ export const InitialHistoryScreen = () => {
                             )}
                         </div>
 
+                        {/* Comentarios (Movido aquí) */}
+                        <div className="mb-6">
+                            <h4 className="font-bold text-gray-700 mb-2">Comentarios</h4>
+                            <Controller
+                                name="comments"
+                                control={control}
+                                render={({ field }) => (
+                                    <textarea
+                                        rows={4}
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        placeholder="Escriba aquí sus comentarios..."
+                                        className={`w-full p-3 rounded-xl border-2 outline-none transition-all ${isOnline ? 'bg-white border-black focus:border-blue-500' : 'bg-white border-red-500'}`}
+                                    />
+                                )}
+                            />
+                        </div>
+
+                        {/* Diagnóstico (Movido aquí) */}
+                        <div className="mb-8 border-b pb-6">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4">Diagnóstico</h3>
+                            <div className="space-y-3">
+                                {currentDiagnoses.map((dx, i) => (
+                                    <div key={i} className="flex items-center gap-3">
+                                        <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
+                                            {i + 1}
+                                        </span>
+                                        <input
+                                            type="text"
+                                            value={dx}
+                                            onChange={e => handleDiagnosisChange(i, e.target.value)}
+                                            placeholder={`Diagnóstico ${i + 1}`}
+                                            className={isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500')}
+                                        />
+                                        {currentDiagnoses.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => removeDiagnosis(i)}
+                                                className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={addDiagnosis}
+                                    className="text-blue-600 font-bold text-sm hover:underline flex items-center gap-1 mt-2"
+                                >
+                                    <Plus size={16} /> Agregar diagnóstico
+                                </button>
+                            </div>
+                        </div>
+
                         <div className="space-y-6">
                             {/* Alimentación */}
                             <div>
-                                <h4 className="font-bold text-gray-700 mb-2">Indicaciones dietéticas</h4>
+                                <h4 className="font-bold text-gray-700 mb-2">Alimentación</h4>
                                 <FloatingLabelInput
                                     label="Detalles de alimentación"
                                     as="textarea"
@@ -1279,22 +1358,7 @@ export const InitialHistoryScreen = () => {
                     </Section>
 
                     {/* IX. Comentarios Generales */}
-                    <div className="mt-8 pt-6 border-t">
-                        <Controller
-                            name="comments"
-                            control={control}
-                            render={({ field }) => (
-                                <FloatingLabelInput
-                                    label="Comentarios Generales / Notas Adicionales"
-                                    as="textarea"
-                                    rows={4}
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
-                                />
-                            )}
-                        />
-                    </div>
+                    {/* IX. Comentarios Generales (MOVIDO ARRIBA) */}
 
                     <div className="fixed bottom-0 left-0 w-full p-4 flex justify-center z-50 pointer-events-none">
                         <button

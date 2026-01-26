@@ -211,9 +211,7 @@ service cloud.firestore {
       allow read: if (isOwner(userId) || isAdmin()) && isTokenValid();
       
       // SOLO admins pueden escribir directamente (para cambiar roles)
-      // allow write: if isAdmin();
-      allow write: if true; // DEBUG: OPEN FOR FIXING
-      // allow write: if true;
+      allow write: if isAdmin();
       
       // Users can create their own profile on signup
       // CRÍTICO: Solo rol 'patient' + validación de datos + campos requeridos
@@ -280,16 +278,10 @@ service cloud.firestore {
                       (!('phone' in request.resource.data) || request.resource.data.phone == '' || isValidPhone(request.resource.data.phone));
       
       // GET: Solo el propietario (por email) o usuarios privilegiados
-      // GET: Solo el propietario (por email) o usuarios privilegiados
-      // Check isNotDeleted logic only for single document retrieval or filtered query
-      allow get: if true; // DEBUG: OPEN FOR FIXING
+      allow get: if isPrivileged() || isEmailOwner() || isStaff(); 
 
-      // LIST: Privileged users can list ALL (even deleted ones, or filtered by client).
-      // We do NOT check isNotDeleted() here to allow unfiltered queries to succeed
-      // (Client should filter deleted==false if they want to hide them)
       // LIST: Privileged users can list ALL. Patients can list their own (for duplicate monitoring)
-      // LIST: Privileged users can list ALL. Patients can list their own (for duplicate monitoring)
-      allow list: if true; // DEBUG: OPEN FOR FIXING
+      allow list: if isPrivileged() || isEmailOwner();
       
       // UPDATE: Propietario o privilegiados + NO modificar campos críticos
       allow update: if ((isEmailOwner() && criticalFieldsUnchanged()) || isStaff()) && 
@@ -305,20 +297,16 @@ service cloud.firestore {
       // --------------------------------------------------------
       match /histories/{historyId} {
         // SEGURIDAD: Solo el propietario del paciente o usuarios privilegiados
-        // allow read: if (isOwner(patientId) || isPrivileged()) && isNotDeleted();
-        allow read: if true; // DEBUG
+        allow read: if (isOwner(patientId) || isPrivileged()) && isNotDeleted();
         
         // Crear historiales: Solo usuarios privilegiados (doctores/admin)
-        // allow create: if isPrivileged();
-        allow create: if true; // DEBUG
+        allow create: if isPrivileged();
         
         // Actualizar: Solo usuarios privilegiados
-        // allow update: if isPrivileged() && isNotDeleted();
-        allow update: if true; // DEBUG
+        allow update: if isPrivileged() && isNotDeleted();
         
         // Eliminar: Enabled for privileged users
-        // allow delete: if isPrivileged();
-        allow delete: if true; // DEBUG
+        allow delete: if isPrivileged();
       }
       
       // --------------------------------------------------------
@@ -326,17 +314,13 @@ service cloud.firestore {
       // --------------------------------------------------------
       match /consults/{consultId} {
         // SEGURIDAD: Solo el propietario del paciente o usuarios privilegiados
-        // allow read: if (isOwner(patientId) || isPrivileged()) && isNotDeleted();
-        allow read: if true; // DEBUG
+        allow read: if (isOwner(patientId) || isPrivileged()) && isNotDeleted();
         
-        // allow create: if isPrivileged();
-        allow create: if true; // DEBUG
+        allow create: if isPrivileged();
         
-        // allow update: if isPrivileged() && isNotDeleted();
-        allow update: if true; // DEBUG
+        allow update: if isPrivileged() && isNotDeleted();
         
-        // allow delete: if isPrivileged();
-        allow delete: if true; // DEBUG
+        allow delete: if isPrivileged();
       }
       
       // --------------------------------------------------------
@@ -344,11 +328,10 @@ service cloud.firestore {
       // --------------------------------------------------------
       match /observations/{observationId} {
         // SEGURIDAD: Solo el propietario o usuarios privilegiados
-        // allow read: if isOwner(patientId) || isPrivileged();
-        allow read: if true; // DEBUG
-        allow create: if true; // DEBUG
-        allow update: if true; // DEBUG
-        allow delete: if true; // DEBUG
+        allow read: if isOwner(patientId) || isPrivileged();
+        allow create: if isPrivileged();
+        allow update: if isPrivileged();
+        allow delete: if isPrivileged();
       }
       
       // --------------------------------------------------------
@@ -356,11 +339,10 @@ service cloud.firestore {
       // --------------------------------------------------------
       match /snapshots/{snapshotId} {
         // SEGURIDAD: Solo el propietario o usuarios privilegiados
-        // allow read: if isOwner(patientId) || isPrivileged();
-        allow read: if true; // DEBUG
-        allow create: if true; // DEBUG
-        allow update: if true; // DEBUG
-        allow delete: if true; // DEBUG
+        allow read: if isOwner(patientId) || isPrivileged();
+        allow create: if isPrivileged();
+        allow update: if isPrivileged();
+        allow delete: if isPrivileged();
       }
     }
     
@@ -369,20 +351,16 @@ service cloud.firestore {
     // ============================================================
     match /appointments/{appointmentId} {
       // SEGURIDAD: Pacientes solo ven sus propias citas, privilegiados ven todas
-      // allow read: if isStaff() || (isAuthenticated() && resource.data.patientId == request.auth.uid);
-      allow read: if true; // DEBUG
+      allow read: if isStaff() || (isAuthenticated() && resource.data.patientId == request.auth.uid);
       
       // Crear citas: Pacientes crean las suyas, privilegiados crean cualquiera
-      // allow create: if isStaff() || (isAuthenticated() && request.resource.data.patientId == request.auth.uid);
-      allow create: if true; // DEBUG
+      allow create: if isStaff() || (isAuthenticated() && request.resource.data.patientId == request.auth.uid);
       
       // Actualizar: Privilegiados o el paciente dueño
-      // allow update: if isStaff() || (isAuthenticated() && resource.data.patientId == request.auth.uid);
-      allow update: if true; // DEBUG
+      allow update: if isStaff() || (isAuthenticated() && resource.data.patientId == request.auth.uid);
       
       // Eliminar: Solo usuarios privilegiados
-      // allow delete: if isPrivileged();
-      allow delete: if true; // DEBUG
+      allow delete: if isPrivileged();
     }
     
     // ============================================================
@@ -395,20 +373,16 @@ service cloud.firestore {
     
     match /initialHistories/{historyId} {
       // SEGURIDAD: Solo doctores y admins pueden ver/editar historias migradas
-      // allow read: if isPrivileged();
-      allow read: if true; // DEBUG
+      allow read: if isPrivileged();
       
-      // allow write: if isPrivileged(); 
-      allow write: if true; // DEBUG
+      allow write: if isPrivileged(); 
     }
 
     match /subsequentConsults/{consultId} {
       // SEGURIDAD: Solo doctores y admins pueden ver/editar consultas migradas
-      // allow read: if isPrivileged();
-      allow read: if true; // DEBUG
+      allow read: if isPrivileged();
       
-      // allow write: if isPrivileged();
-      allow write: if true; // DEBUG
+      allow write: if isPrivileged();
     }
 
     // ============================================================
