@@ -1,12 +1,12 @@
 {
   "projects": {
-    "default": "medirecord-pro-c84d0"
+    "default": "cenlae"
   },
   "targets": {
-    "medirecord-pro-c84d0": {
+    "cenlae": {
       "hosting": {
-        "medirecord-pro-c84d0": [
-          "medirecord-pro-c84d0"
+        "cenlae": [
+          "cenlae"
         ]
       }
     }

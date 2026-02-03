@@ -36,6 +36,9 @@ export {
 
 // Re-export audit log utilities for use in other functions
 export { createAuditLog, logPaymentEvent, logMedicalRecordDeletion } from "./auditLogs";
+
+// Export client audit logging function
+export { logAuditFromClient } from "./auditClient";
 export { setUserRole, getUserRole, isAdmin, isPrivileged, isTokenExpired, ASSIGNABLE_ROLES, ROLE_NAMES } from "./roles";
 
 

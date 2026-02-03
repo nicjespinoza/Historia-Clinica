@@ -8,16 +8,18 @@ export interface OfflineAction {
 }
 
 const STORAGE_KEY = 'offline_queue_v1';
-const ALLOWED_EMAILS = ['dr@cenlae.com', 'asistente@cenlae.com'];
+// Privileged roles that can use offline mode (no hardcoded emails)
+const ALLOWED_ROLES = ['doctor', 'admin', 'assistant'];
 
 class OfflineQueueManager {
 
     /**
      * Verifica si el usuario actual tiene permisos para usar el modo offline
+     * @param userRole - Role del usuario desde AuthContext (no email)
      */
-    canUseOfflineMode(userEmail: string | null): boolean {
-        if (!userEmail) return false;
-        return ALLOWED_EMAILS.includes(userEmail);
+    canUseOfflineMode(userRole: string | null): boolean {
+        if (!userRole) return false;
+        return ALLOWED_ROLES.includes(userRole);
     }
 
     /**

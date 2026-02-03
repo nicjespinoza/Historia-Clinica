@@ -59,11 +59,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const tokenResult = await user.getIdTokenResult();
                 let assignedRole = tokenResult.claims.role as UserRole;
 
-                // 2. FALLBACK: Hardcoded emails for immediate testing
+                // 2. Default to patient if no role claim exists
+                // Use admin panel (Cloud Functions) to assign privileged roles
                 if (!assignedRole) {
-                    if (user.email === 'dr@cenlae.com') assignedRole = 'doctor';
-                    else if (user.email === 'asistente@cenlae.com') assignedRole = 'assistant';
-                    else assignedRole = 'patient';
+                    assignedRole = 'patient';
+                    console.warn('User has no role claim, defaulting to patient. Use admin panel to assign roles.');
                 }
                 setRole(assignedRole);
             } else {

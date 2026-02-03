@@ -66,36 +66,22 @@ ipAddress) {
 function getRolePermissions(role) {
     const permissions = {
         patient: [
-            "read:own_profile",
-            "update:own_profile",
-            "read:own_appointments",
-            "create:appointments",
-            "read:own_histories",
+            "patient:read_own",
+            "appointment:read_own",
         ],
         doctor: [
-            "read:all_patients",
-            "update:patients",
-            "create:histories",
-            "update:histories",
-            "delete:histories",
-            "create:consults",
-            "update:consults",
-            "manage:appointments",
-            "create:observations",
+            "start", // Super Admin wildcard
         ],
         assistant: [
-            "read:all_patients",
-            "create:appointments",
-            "update:appointments",
-            "read:histories",
-            "send:notifications",
+            "patient:read",
+            "patient:create",
+            "patient:update",
+            "appointment:manage", // Include create, update, delete
+            "consult:create_vitals",
+            // Explicitly excluding 'consult:read_full', 'consult:create_full', 'patient:delete'
         ],
         admin: [
-            "manage:users",
-            "manage:roles",
-            "read:audit_logs",
-            "manage:all_data",
-            "delete:users",
+            "admin:manage",
         ],
     };
     return permissions[role] || [];
@@ -180,10 +166,11 @@ async function hasPermission(userId, permission) {
     if (!(claims === null || claims === void 0 ? void 0 : claims.permissions)) {
         return false;
     }
-    // Admin tiene todos los permisos
-    if (claims.role === "admin") {
+    // Doctor/Admin with wildcard have all permissions
+    if (claims.role === "admin" || claims.role === "doctor") {
         return true;
     }
+    // Check specific permission
     return claims.permissions.includes(permission);
 }
 /**

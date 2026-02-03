@@ -6,6 +6,7 @@ import {
     CheckCircle, AlertCircle, Video, MapPin, DollarSign
 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 import { Patient, Appointment, InitialHistory, SubsequentConsult } from '../../types';
 
 interface QuickStat {
@@ -18,6 +19,7 @@ interface QuickStat {
 
 export const DoctorHomeScreen = () => {
     const navigate = useNavigate();
+    const { role } = useAuth();
     const [patients, setPatients] = useState<Patient[]>([]);
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [histories, setHistories] = useState<InitialHistory[]>([]);
@@ -197,7 +199,9 @@ export const DoctorHomeScreen = () => {
                 <div className="bg-gradient-to-r from-[#083c79] to-[#0a5199] rounded-2xl p-6 md:p-8 text-white shadow-xl">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold mb-2">¡Bienvenido, Doctor!</h1>
+                            <h1 className="text-3xl font-bold mb-2">
+                                ¡Bienvenido, {role === 'doctor' ? 'Doctor' : 'Asistente'}!
+                            </h1>
                             <p className="text-blue-100 capitalize">{todayFormatted}</p>
                         </div>
                         <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl p-4">

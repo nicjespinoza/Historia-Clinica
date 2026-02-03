@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendEndoscopicReminders = exports.scheduleEndoscopicReminders = exports.checkEmailAvailability = exports.getDashboardAdvancedStats = exports.generateAIAnalysis = exports.sendAppointmentReminders = exports.tilopayWebhook = exports.stripeWebhook = exports.initiatePayment = exports.createPaymentIntent = exports.baseUrl = exports.ROLE_NAMES = exports.ASSIGNABLE_ROLES = exports.isTokenExpired = exports.isPrivileged = exports.isAdmin = exports.getUserRole = exports.setUserRole = exports.logMedicalRecordDeletion = exports.logPaymentEvent = exports.createAuditLog = exports.restoreFromBackup = exports.getBackupHistory = exports.triggerManualBackup = exports.scheduledBackup = exports.toggleUserStatus = exports.listUsers = exports.getAuditStats = exports.getAuditLogs = exports.checkTokenExpiration = exports.forceLogout = exports.renewToken = exports.revokeRole = exports.assignUserRole = exports.processTiloPayPayment = exports.powertranzCallback = exports.verifyPowerTranzPayment = exports.processPowerTranzPayment = void 0;
+exports.sendEndoscopicReminders = exports.scheduleEndoscopicReminders = exports.checkEmailAvailability = exports.getDashboardAdvancedStats = exports.generateAIAnalysis = exports.sendAppointmentReminders = exports.tilopayWebhook = exports.stripeWebhook = exports.initiatePayment = exports.createPaymentIntent = exports.baseUrl = exports.ROLE_NAMES = exports.ASSIGNABLE_ROLES = exports.isTokenExpired = exports.isPrivileged = exports.isAdmin = exports.getUserRole = exports.setUserRole = exports.logAuditFromClient = exports.logMedicalRecordDeletion = exports.logPaymentEvent = exports.createAuditLog = exports.restoreFromBackup = exports.getBackupHistory = exports.triggerManualBackup = exports.scheduledBackup = exports.toggleUserStatus = exports.listUsers = exports.getAuditStats = exports.getAuditLogs = exports.checkTokenExpiration = exports.forceLogout = exports.renewToken = exports.revokeRole = exports.assignUserRole = exports.processTiloPayPayment = exports.powertranzCallback = exports.verifyPowerTranzPayment = exports.processPowerTranzPayment = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -39,6 +39,9 @@ var auditLogs_1 = require("./auditLogs");
 Object.defineProperty(exports, "createAuditLog", { enumerable: true, get: function () { return auditLogs_1.createAuditLog; } });
 Object.defineProperty(exports, "logPaymentEvent", { enumerable: true, get: function () { return auditLogs_1.logPaymentEvent; } });
 Object.defineProperty(exports, "logMedicalRecordDeletion", { enumerable: true, get: function () { return auditLogs_1.logMedicalRecordDeletion; } });
+// Export client audit logging function
+var auditClient_1 = require("./auditClient");
+Object.defineProperty(exports, "logAuditFromClient", { enumerable: true, get: function () { return auditClient_1.logAuditFromClient; } });
 var roles_1 = require("./roles");
 Object.defineProperty(exports, "setUserRole", { enumerable: true, get: function () { return roles_1.setUserRole; } });
 Object.defineProperty(exports, "getUserRole", { enumerable: true, get: function () { return roles_1.getUserRole; } });

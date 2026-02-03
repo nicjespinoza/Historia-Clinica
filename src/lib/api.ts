@@ -216,7 +216,6 @@ export const api = {
 
         // 3. Delete Patient Doc
         await deleteDoc(patientRef);
-        await deleteDoc(patientRef);
         firestoreCache.invalidate('patients:all_v3');
         firestoreCache.invalidatePattern('^appointments:');
 

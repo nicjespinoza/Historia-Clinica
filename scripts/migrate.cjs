@@ -40,6 +40,12 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 db.settings({ ignoreUndefinedProperties: true });
 
+// 🔍 VERIFICAR PROYECTO OBJETIVO
+console.log("====================================================");
+console.log("🎯 PROYECTO FIREBASE OBJETIVO:");
+console.log(`   Project ID: ${serviceAccount.project_id}`);
+console.log("====================================================\n");
+
 // ============================================================================
 // HELPERS
 // ============================================================================
