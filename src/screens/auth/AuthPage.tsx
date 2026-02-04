@@ -20,10 +20,15 @@ export const AuthPage = () => {
         navigate('/app/patient/login');
     };
 
+    const roleParam = searchParams.get('role');
+    // Map URL param to LoginScreen props (using 'any' to bypass strict 'clinic'|'doctor' type if needed or update type)
+    const initialRole = (roleParam === 'doctor' || roleParam === 'assistant') ? roleParam : undefined;
+
     return (
         <LoginScreen
-            onLogin={() => { }} // No longer needed as LoginScreen handles it internally via Context
+            onLogin={() => { }}
             onPatientAccess={handlePatientAccess}
+            initialRole={initialRole as any}
         />
     );
 };

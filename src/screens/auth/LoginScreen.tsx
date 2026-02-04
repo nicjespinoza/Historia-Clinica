@@ -7,16 +7,22 @@ import { useNavigate } from 'react-router-dom';
 interface LoginScreenProps {
     onLogin: (email: string) => void;
     onPatientAccess: () => void;
-    initialRole?: 'clinic' | 'doctor';
+    initialRole?: 'clinic' | 'doctor' | 'assistant';
 }
 
-export const LoginScreen = ({ }: LoginScreenProps) => {
+export const LoginScreen = ({ initialRole }: LoginScreenProps) => {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [pass, setPass] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const { signIn } = useAuth();
+
+    const getRoleTitle = () => {
+        if (initialRole === 'doctor') return 'Personal Médico';
+        if (initialRole === 'assistant') return 'Administración'; // Map assistant string if needed, or stick to 'clinic'/'doctor' types
+        return 'Acceso al Sistema';
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -37,8 +43,11 @@ export const LoginScreen = ({ }: LoginScreenProps) => {
                         <img
                             src="https://static.wixstatic.com/media/3743a7_bc65d6328e9c443e95b330a92181fbc8~mv2.png/v1/crop/x_13,y_9,w_387,h_61/fill/w_542,h_85,al_c,lg_1,q_85,enc_avif,quality_auto/logo-drmairenavalle.png"
                             alt="Dr. Milton Mairena Valle"
-                            className="h-16 md:h-20 w-auto mx-auto object-contain"
+                            className="h-16 md:h-20 w-auto mx-auto object-contain mb-4"
                         />
+                        <h2 className="text-xl font-bold text-gray-800 uppercase tracking-wide">
+                            {getRoleTitle()}
+                        </h2>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">

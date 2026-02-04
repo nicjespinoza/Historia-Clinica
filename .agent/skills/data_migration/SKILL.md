@@ -12,7 +12,7 @@ This skill guides you through the process of resetting and repopulating the Fire
 - **Node.js**: Ensure Node.js is installed.
 - **Firebase Admin SDK**: The project must have `firebase-admin` installed.
 - **Service Account**: A valid `serviceAccountKey.json` must be present in `scripts/data/`.
-- **Source Data**: `wix_pacientes.json` and `wix_evolucion.json` must be present in `scripts/data/`.
+- **Source Data**: `wix_pacientes.json` and `wix_evolucion.json` and `wix_notas.json` must be present in `scripts/data/`.
 
 ## Critical Warnings
 

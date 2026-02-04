@@ -13,6 +13,7 @@ const DoctorProfilePage = lazy(() => import('./screens/cenlae/DoctorProfilePage'
 const SurgicalProceduresPage = lazy(() => import('./screens/cenlae/SurgicalProceduresPage').then(m => ({ default: m.SurgicalProceduresPage })));
 const EndoscopicProceduresPage = lazy(() => import('./screens/cenlae/EndoscopicProceduresPage').then(m => ({ default: m.EndoscopicProceduresPage })));
 const ContactPage = lazy(() => import('./screens/cenlae/ContactPage').then(m => ({ default: m.ContactPage })));
+const StaffPortalScreen = lazy(() => import('./screens/auth/StaffPortalScreen').then(m => ({ default: m.StaffPortalScreen })));
 
 // Loading Component
 const PageLoader = () => (
@@ -39,8 +40,10 @@ const App = () => {
                 <Route path="/servicios/endoscopicos" element={<EndoscopicProceduresPage />} />
                 <Route path="/contacto" element={<ContactPage />} />
 
-                {/* Doctor Login Route */}
-                <Route path="/app/doctor/login" element={<AuthPage />} />
+                {/* Doctor Login Route - Now Points to Staff Portal */}
+                <Route path="/app/doctor/login" element={<StaffPortalScreen />} />
+                <Route path="/app/staff" element={<StaffPortalScreen />} />
+                <Route path="/auth/login" element={<AuthPage />} /> {/* Legacy/Fallback */}
 
                 {/* Payment Callback Route (for 3DS return) */}
                 <Route path="/app/payment/callback" element={<PaymentCallbackScreen />} />
