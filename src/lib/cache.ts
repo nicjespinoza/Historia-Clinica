@@ -49,6 +49,18 @@ class FirestoreCache {
     }
 
     /**
+     * Set a value in cache manually
+     */
+    set<T>(key: string, data: T, ttlMs: number = this.defaultTTL): void {
+        const now = Date.now();
+        this.cache.set(key, {
+            data,
+            timestamp: now,
+            expiresAt: now + ttlMs
+        });
+    }
+
+    /**
      * Invalidate a specific cache key
      */
     invalidate(key: string): void {

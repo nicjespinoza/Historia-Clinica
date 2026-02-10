@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './src/index.css';
 import App from './src/App';
+import './src/i18n';
 import { AuthProvider } from './src/context/AuthContext';
 
 const rootElement = document.getElementById('root');

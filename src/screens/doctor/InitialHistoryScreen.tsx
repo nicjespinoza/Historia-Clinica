@@ -15,35 +15,21 @@ import { initialHistorySchema, InitialHistoryFormData, getDefaultInitialHistoryV
 const INPUT_CLASS = "w-full px-4 py-2.5 bg-gray-50 border-2 border-black text-gray-800 text-sm rounded-lg focus:ring-4 focus:ring-blue-100 focus:border-blue-500 block transition-all duration-200 outline-none placeholder-gray-400 hover:bg-white";
 const SECTION_TITLE_CLASS = "text-xl font-bold text-gray-800 mb-6 flex items-center gap-2";
 
-// Helper for exclusive Yes/No/NA toggles
+// Helper for exclusive Yes/No toggles
 const handleExclusiveChange = (current: any, key: string, value: boolean) => {
     const newState = { ...current, [key]: value };
     // If turning ON, disable others
     if (value) {
         if (key === 'yes') {
             newState.no = false;
-            if (newState.na !== undefined) newState.na = false;
         } else if (key === 'no') {
             newState.yes = false;
-            if (newState.na !== undefined) newState.na = false;
-        } else if (key === 'na') {
-            newState.yes = false;
-            newState.no = false;
         }
     } else {
-        // If turning OFF "yes" or "no", consider if we should auto-select the other? 
-        // User didn't request that, but usually "If Yes is uncheck, does it mean No?"
-        // Sticking to user request: "Si selecciono Si y despues No el check Si se mantiene seleccionado no se deselecciona" -> Wait.
-        // User text: "Si selecciono Si y despues No el check Si se mantiene seleccionado no se deselecciona"
-        // Wait, user said: "si selecciono Si y despues No el check Si se mantiene seleccionado no se deselecciona" -> This implies they WANT the current behavior?
-        // NO, "quiero q hagan lo siguiente si selecciono Si y despues No el check Si se mantiene seleccionado no se deselecciona"
-        // This is confusing. "selecciono Si" -> Yes=True. "despues No" -> No=True. "el check Si se mantiene seleccionado".
-        // This describes the CURRENT broken state (both are true).
-        // User probably meant: "Current behavior is: Si stays selected. I WANT: one to deselect the other".
-        // Context: "Ahora en los check q son Si y No quiero q hagan lo siguiente si selecciono Si y despues No el check Si se mantiene seleccionado no se deselecciona"
-        // This reads like a bug report. "When I select Yes then No, Yes stays selected (it doesn't deselect). I WANT them to be exclusive." (Implicit).
-        // Or if they literally want both selected, that creates invalid state.
-        // Given standard UI patterns, I assume they want exclusivity.
+        // If turning OFF "yes" or "no", and the other is also false, force "no" to be true (default state)
+        if (!newState.yes && !newState.no) {
+            newState.no = true;
+        }
     }
     return newState;
 };
@@ -153,7 +139,6 @@ const MemoizedSection = memo(({ title, children, className = "" }: { title: stri
     </div>
 ));
 
-// RHF-Compatible Group Section using useFormContext
 const GroupSectionRHF = memo(({
     title,
     list,
@@ -191,8 +176,27 @@ const GroupSectionRHF = memo(({
         <div className="mb-6 pb-4 border-b-2 border-gray-900 last:border-0 last:mb-0 last:pb-0">
             <YesNo label={title} value={groupData} onChange={handleYesNoChange} />
             {groupData?.yes && (
-                <div className="pl-0 mt-4 bg-gray-50/50 p-4 rounded-xl border border-gray-200/50 animate-in fade-in slide-in-from-top-2">
+                <div className="pl-0 mt-4 bg-gray-50/50 p-3 md:p-4 rounded-xl border border-gray-200/50 animate-in fade-in slide-in-from-top-2">
                     <CheckboxList items={list} data={groupData.conditions || groupData.list || {}} onChange={handleListChange} />
+
+                    {/* Conditional Cancer Details */}
+                    {(groupData.conditions?.['Cáncer'] || groupData.conditions?.['Cancer'] || groupData.list?.['Cáncer'] || groupData.list?.['Cancer']) && (
+                        <div className="mt-4 animate-in zoom-in-95 duration-200">
+                            <Controller
+                                name={`${groupKey}.cancerDetails` as any}
+                                control={control}
+                                render={({ field }) => (
+                                    <FloatingLabelInput
+                                        label="¿Cuáles?"
+                                        value={field.value || ''}
+                                        onChange={field.onChange}
+                                        wrapperClassName="bg-white border-2 border-orange-200 rounded-xl focus-within:border-[#083C79]"
+                                    />
+                                )}
+                            />
+                        </div>
+                    )}
+
                     <div className="mt-4">
                         <FloatingLabelInput
                             label="Otra / Cual?"
@@ -352,6 +356,52 @@ export const InitialHistoryScreen = () => {
             }
         };
 
+        // NEW: Helper to convert legacy string fields (from very old migrations) to Yes/No objects
+        const convertToYesNoObject = (sectionKey: string, textFieldName: string = 'description') => {
+            let section = normalized[sectionKey];
+            if (typeof section === 'string' && section.trim() !== '') {
+                const newSection: any = {
+                    yes: true,
+                    no: false,
+                    na: false,
+                    [textFieldName]: section,
+                };
+                // Only add empty list object if the section schema expects a checkbox map
+                const sectionsWithListObjects = ['regularMeds', 'allergies', 'foodAllergies', 'foodIntolerances', 'habits', 'exposures', 'familyHistory', 'familyGastro'];
+                if (sectionsWithListObjects.includes(sectionKey)) {
+                    newSection.list = {};
+                } else if (sectionKey === 'surgeries' || sectionKey === 'complications') {
+                    // If it's surgeries/complications, ensure list is a string if it's not the primary text field
+                    if (textFieldName !== 'list') newSection.list = '';
+                }
+                normalized[sectionKey] = newSection;
+            } else if (section && typeof section === 'object') {
+                // Ensure correct type for 'list' if it exists in the section
+                const sectionsWithListObjects = ['regularMeds', 'allergies', 'foodAllergies', 'foodIntolerances', 'habits', 'exposures', 'familyHistory', 'familyGastro'];
+
+                if (sectionsWithListObjects.includes(sectionKey)) {
+                    if (!section.list || typeof section.list !== 'object' || Array.isArray(section.list)) {
+                        section.list = {};
+                    }
+                } else if (sectionKey === 'surgeries' || sectionKey === 'complications') {
+                    if (section.list !== undefined && typeof section.list !== 'string') {
+                        section.list = Array.isArray(section.list) ? section.list.join(', ') : String(section.list || '');
+                    }
+                }
+            }
+        };
+
+        // Apply normalization to potentially string fields
+        convertToYesNoObject('regularMeds', 'description');
+        convertToYesNoObject('naturalMeds', 'description');
+        convertToYesNoObject('hospitalizations', 'reason');
+        convertToYesNoObject('surgeries', 'list');
+        convertToYesNoObject('complications', 'list');
+        convertToYesNoObject('anaphylaxis', 'description');
+        convertToYesNoObject('implants', 'which');
+        convertToYesNoObject('devices', 'which');
+        convertToYesNoObject('previousStudies', 'description');
+
         // Apply normalization to all checkbox sections
         convertListToMap('neurological', C.NEURO_LIST);
         convertListToMap('metabolic', C.METABOLIC_LIST);
@@ -384,6 +434,56 @@ export const InitialHistoryScreen = () => {
             normalized.motives = motivesMap;
         }
 
+        // NEW: Ensure deeply nested fields that were added recently exist in legacy records
+        if (!normalized.anaphylaxis || typeof normalized.anaphylaxis !== 'object') {
+            normalized.anaphylaxis = { yes: false, no: true, description: '' };
+        }
+        if (normalized.transfusions && !normalized.transfusions.reactions) {
+            normalized.transfusions.reactions = defaults.transfusions.reactions;
+        }
+        if (normalized.endoscopy && !normalized.endoscopy.procedures) {
+            normalized.endoscopy.procedures = defaults.endoscopy.procedures;
+        }
+
+        // FORCE "NO" as default if neither YES nor NO is selected (ensures "No" on empty/new fields)
+        const forceNoDefault = (sectionKey: string) => {
+            const section = normalized[sectionKey];
+            if (section && typeof section === 'object') {
+                // If neither 'yes', 'no' nor 'na' is true (handles false, undefined, null)
+                // This ensures we only set "No" if the field is literally empty/unselected
+                if (!section.yes && !section.no && !section.na) {
+                    section.no = true;
+                    section.yes = false;
+                }
+            }
+        };
+
+        const yesNoSections = [
+            'preExistingDiseases', 'neurological', 'metabolic', 'dermatologic',
+            'respiratory', 'cardiac', 'gastro', 'hepato', 'peripheral',
+            'hematological', 'renal', 'rheumatological', 'infectious',
+            'psychiatric', 'gynecoPathological', 'gyneco', 'regularMeds',
+            'naturalMeds', 'hospitalizations', 'surgeries', 'endoscopy',
+            'complications', 'allergies', 'anaphylaxis', 'foodAllergies',
+            'foodIntolerances', 'implants', 'devices', 'habits',
+            'transfusions', 'exposures', 'familyHistory', 'familyGastro',
+            'previousStudies'
+        ];
+
+        yesNoSections.forEach(forceNoDefault);
+
+        // Special handling for nested gyneco fields
+        if (normalized.gyneco) {
+            const gynecoNested = ['gestationalDiabetes', 'preeclampsia', 'eclampsia', 'pregnancySuspicion', 'breastfeeding'];
+            gynecoNested.forEach(key => {
+                const sub = normalized.gyneco[key];
+                if (sub && !sub.yes && !sub.no && !sub.na) {
+                    sub.no = true;
+                    sub.yes = false;
+                }
+            });
+        }
+
         return normalized as InitialHistoryFormData;
     }, [patientId]);
 
@@ -398,21 +498,24 @@ export const InitialHistoryScreen = () => {
 
     // Watch specific fields for conditional rendering
     const preExistingDiseases = watch('preExistingDiseases');
+    const habits = watch('habits');
+    const familyHistory = watch('familyHistory');
     const gyneco = watch('gyneco');
     const motives = watch('motives');
     const regularMeds = watch('regularMeds');
     const naturalMeds = watch('naturalMeds');
     const hospitalizations = watch('hospitalizations');
     const surgeries = watch('surgeries');
-    const endoscopy = watch('endoscopy');
-    const complications = watch('complications');
-    const foodIntolerances = watch('foodIntolerances');
-    const implants = watch('implants');
-    const devices = watch('devices');
-    const transfusions = watch('transfusions');
-    const previousStudies = watch('previousStudies');
-    const orders = watch('orders');
-    const physicalExam = watch('physicalExam');
+    const endoscopy = watch('endoscopy') || { yes: false, no: true, list: '', results: '', procedures: [] };
+    const complications = watch('complications') || { yes: false, no: true, list: '' };
+    const anaphylaxis = watch('anaphylaxis') || { yes: false, no: true, description: '' };
+    const foodIntolerances = watch('foodIntolerances') || { yes: false, no: true, list: {}, other: '' };
+    const implants = watch('implants') || { yes: false, no: true, which: '' };
+    const devices = watch('devices') || { yes: false, no: true, which: '' };
+    const transfusions = watch('transfusions') || { yes: false, no: true, reactions: { yes: false, no: true }, which: '' };
+    const previousStudies = watch('previousStudies') || { yes: false, no: true, description: '' };
+    const orders = watch('orders') || { medical: {}, prescription: {}, labs: {}, images: {}, endoscopy: {} };
+    const physicalExam = watch('physicalExam') || { fc: '', fr: '', temp: '', pa: '', pam: '', sat02: '', weight: '', height: '', imc: '', systems: {} };
 
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
@@ -436,6 +539,53 @@ export const InitialHistoryScreen = () => {
             setValue('physicalExam.imc', calculatedImc, { shouldValidate: true });
         }
     }, [calculatedImc, setValue, getValues]);
+
+    // Sync Vital Signs from Patient Record (Hydration)
+    // Runs when patient data loads. Only fills EMPTY fields to avoid overwriting existing history data.
+    useEffect(() => {
+        if (patient?.vitalSigns) {
+            const currentExam = getValues('physicalExam');
+            const pVitals = patient.vitalSigns;
+
+            if (!currentExam.fc && pVitals.fc) setValue('physicalExam.fc', pVitals.fc, { shouldDirty: true });
+            if (!currentExam.fr && pVitals.fr) setValue('physicalExam.fr', pVitals.fr, { shouldDirty: true });
+            if (!currentExam.temp && pVitals.temp) setValue('physicalExam.temp', pVitals.temp, { shouldDirty: true });
+            if (!currentExam.pa && pVitals.pa) setValue('physicalExam.pa', pVitals.pa, { shouldDirty: true });
+            if (!currentExam.pam && pVitals.pam) setValue('physicalExam.pam', pVitals.pam, { shouldDirty: true });
+            if (!currentExam.sat02 && pVitals.sat02) setValue('physicalExam.sat02', pVitals.sat02, { shouldDirty: true });
+            if (!currentExam.weight && pVitals.weight) setValue('physicalExam.weight', pVitals.weight, { shouldDirty: true });
+            if (!currentExam.height && pVitals.height) setValue('physicalExam.height', pVitals.height, { shouldDirty: true });
+            // IMC is handled by the calculation effect above
+        }
+
+        // Sync Motives from Patient Record (New Feature)
+        if (patient) {
+            const currentMotives = getValues('motives') as any; // Type cast for flexible access
+
+            // 1. Sync Checkboxes (only if current is empty/default)
+            // Check if any true value exists currently
+            const hasExistingSelection = currentMotives && Object.keys(currentMotives).some(k =>
+                k !== 'cancerDetails' && k !== 'other' && currentMotives[k] === true
+            );
+
+            if (!hasExistingSelection && patient.motives) {
+                // Merge patient motives into current structure
+                // We don't replace entirely to preserve other structure if needed, but here we just merge true values
+                const newMotives = { ...currentMotives, ...patient.motives };
+                setValue('motives', newMotives, { shouldDirty: true });
+            }
+
+            // 2. Sync Cancer Details
+            if (patient.motivesCancerDetails && !getValues('motivesCancerDetails')) {
+                setValue('motivesCancerDetails', patient.motivesCancerDetails, { shouldDirty: true });
+            }
+
+            // 3. Sync Other Motives
+            if (patient.motivesOther && !getValues('otherMotive')) {
+                setValue('otherMotive', patient.motivesOther, { shouldDirty: true });
+            }
+        }
+    }, [patient, setValue, getValues]);
 
     const getIMCClassification = (imc: number): string => {
         if (imc < 18.5) return 'Bajo peso';
@@ -588,9 +738,27 @@ export const InitialHistoryScreen = () => {
         setValidationErrors([]);
 
         try {
+            // FIX: Normalize Arrays to Strings for Backend Compatibility
+            const processedData = {
+                ...data,
+                isValidated: true,
+                // Join diagnoses array to string if present
+                diagnosis: data.diagnoses && data.diagnoses.length > 0
+                    ? data.diagnoses.filter(Boolean).join('\n')
+                    : data.diagnosis,
+                // Join treatment arrays to strings
+                treatment: {
+                    ...data.treatment,
+                    food: Array.isArray(data.treatment.food) ? data.treatment.food.filter(Boolean).join('\n') : data.treatment.food,
+                    meds: Array.isArray(data.treatment.meds) ? data.treatment.meds.filter(Boolean).join('\n') : data.treatment.meds,
+                    exams: Array.isArray(data.treatment.exams) ? data.treatment.exams.filter(Boolean).join('\n') : data.treatment.exams,
+                    norms: Array.isArray(data.treatment.norms) ? data.treatment.norms.filter(Boolean).join('\n') : data.treatment.norms,
+                }
+            };
+
             // Remove undefined values before sending to Firebase
             const cleanData = Object.fromEntries(
-                Object.entries({ ...data, isValidated: true }).filter(([_, v]) => v !== undefined)
+                Object.entries(processedData).filter(([_, v]) => v !== undefined)
             ) as unknown as InitialHistory;
 
             if (location.state?.history) {
@@ -632,7 +800,14 @@ export const InitialHistoryScreen = () => {
                         </div>
                     </div>
                 )}
-                <form onSubmit={handleSubmit(onSubmit)} className="max-w-5xl mx-auto p-4 pb-32">
+                <form onSubmit={handleSubmit(onSubmit, (errors) => {
+                    console.error("Form Validation Errors:", errors);
+                    // Log details of regularMeds if it has errors
+                    if (errors.regularMeds) {
+                        console.error("DEBUG: regularMeds error details:", errors.regularMeds);
+                    }
+                    showToast(`Error de validación: ${Object.keys(errors).join(', ')}`, 'error');
+                })} className="max-w-5xl mx-auto p-4 pb-32">
                     <Toast
                         message={toast.message}
                         type={toast.type}
@@ -640,8 +815,8 @@ export const InitialHistoryScreen = () => {
                         onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
                     />
                     <div className="bg-white rounded-t-2xl border-b border-gray-200 mb-8 shadow-sm relative p-6">
-                        <button type="button" onClick={() => navigate(-1)} className="absolute top-6 right-6 p-2 bg-[#083c79] text-white hover:bg-[#062a55] rounded-full transition-colors shadow-md z-10">
-                            <ArrowLeft size={24} />
+                        <button type="button" onClick={() => navigate(-1)} className="fixed top-12 right-12 p-3 bg-white text-[#083c79] hover:bg-gray-100 border-2 border-[#083c79] rounded-full transition-all shadow-xl z-[60] group flex items-center justify-center">
+                            <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
                         </button>
                         <h2 className="text-3xl font-bold text-gray-900 mb-2">Historia Clínica Inicial</h2>
                         <div className="flex flex-wrap gap-6 mt-4 text-sm text-gray-600 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
@@ -674,12 +849,31 @@ export const InitialHistoryScreen = () => {
 
                     <MemoizedSection title="Motivo de Consulta">
                         <CheckboxList items={C.MOTIVES_LIST} data={motives} onChange={handleMotiveChange} />
+
+                        {/* Conditional Cancer Details for Motives */}
+                        {(motives?.['Cáncer'] || motives?.['Cancer']) && (
+                            <div className="mt-4 animate-in zoom-in-95 duration-200">
+                                <Controller
+                                    name="motivesCancerDetails"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <FloatingLabelInput
+                                            label="¿Cuáles? (Cáncer)"
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            wrapperClassName="bg-white border-2 border-orange-200 rounded-xl focus-within:border-[#083C79]"
+                                        />
+                                    )}
+                                />
+                            </div>
+                        )}
+
                         {motives?.['Obesidad'] && (
                             <div className="mt-2">
                                 <button
                                     type="button"
                                     onClick={() => setShowObesityModal(true)}
-                                    className="text-sm text-blue-600 hover:text-blue-800 font-medium underline"
+                                    className="text-sm text-[#083C79] hover:text-[#062a55] font-medium underline"
                                 >
                                     Ver detalles de Obesidad
                                 </button>
@@ -895,37 +1089,77 @@ export const InitialHistoryScreen = () => {
                         <div className="py-4 border-b-2 border-gray-900">
                             <YesNo label="Procedimientos endoscópicos previos" value={endoscopy} onChange={(k, v) => setValue('endoscopy', handleExclusiveChange(endoscopy, k, v))} />
                             {endoscopy?.yes && (
-                                <div className="mt-4 space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <Controller
-                                            name="endoscopy.list"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <FloatingLabelInput
-                                                    label="¿Cuáles?"
-                                                    value={field.value}
-                                                    onChange={field.onChange}
-                                                    wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
-                                                />
+                                <div className="mt-4 space-y-6">
+                                    {(endoscopy.procedures || []).map((proc: any, index: number) => (
+                                        <div key={index} className="relative p-4 bg-gray-50/50 rounded-2xl border-2 border-gray-100 group animate-in fade-in slide-in-from-top-2">
+                                            {endoscopy.procedures.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const newProcs = [...endoscopy.procedures];
+                                                        newProcs.splice(index, 1);
+                                                        setValue('endoscopy.procedures', newProcs, { shouldDirty: true });
+                                                    }}
+                                                    className="absolute -right-2 -top-2 w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-sm z-10"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
                                             )}
-                                        />
-                                        <Controller
-                                            name="endoscopy.results"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <FloatingLabelInput
-                                                    label="Resultados"
-                                                    value={field.value}
-                                                    onChange={field.onChange}
-                                                    wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <Controller
+                                                    name={`endoscopy.procedures.${index}.which` as any}
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <FloatingLabelInput
+                                                            label="¿Cuáles?"
+                                                            value={field.value || ''}
+                                                            onChange={field.onChange}
+                                                            wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
+                                                        />
+                                                    )}
                                                 />
-                                            )}
-                                        />
-                                        <div>
-                                            <label className="block text-sm font-bold text-black mb-2">Fecha del último</label>
-                                            <input type="date" className="w-full px-4 py-3 rounded-xl border-2 border-gray-900 font-medium text-[#084286]" />
+                                                <div>
+                                                    <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Fecha del último estudio</label>
+                                                    <Controller
+                                                        name={`endoscopy.procedures.${index}.lastDate` as any}
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <input
+                                                                type="date"
+                                                                value={field.value || ''}
+                                                                onChange={field.onChange}
+                                                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-900 font-medium text-[#084286] bg-white outline-none focus:border-blue-500 transition-colors"
+                                                            />
+                                                        )}
+                                                    />
+                                                </div>
+                                                <Controller
+                                                    name={`endoscopy.procedures.${index}.results` as any}
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <FloatingLabelInput
+                                                            label="Resultados"
+                                                            value={field.value || ''}
+                                                            onChange={field.onChange}
+                                                            wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
+                                                        />
+                                                    )}
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
+                                    ))}
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const currentProcs = endoscopy.procedures || [];
+                                            setValue('endoscopy.procedures', [...currentProcs, { which: '', lastDate: '', results: '' }], { shouldDirty: true });
+                                        }}
+                                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-2xl text-gray-400 font-bold hover:border-blue-500 hover:text-blue-500 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Plus size={20} />
+                                        Agregar otro procedimiento
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -996,6 +1230,31 @@ export const InitialHistoryScreen = () => {
                         {/* Alergias */}
                         <GroupSectionRHF title="Alergias" list={C.ALLERGIES_LIST} groupKey="allergies" />
 
+                        {/* ANAFILAXIA / SHOCK */}
+                        <div className="py-4 border-b-2 border-gray-900">
+                            <YesNo
+                                label="ANAFILAXIA / SHOCK"
+                                value={anaphylaxis}
+                                onChange={(k, v) => setValue('anaphylaxis', handleExclusiveChange(anaphylaxis, k, v), { shouldDirty: true })}
+                            />
+                            {anaphylaxis?.yes && (
+                                <div className="mt-4 animate-in fade-in slide-in-from-top-2">
+                                    <Controller
+                                        name="anaphylaxis.description"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <FloatingLabelInput
+                                                label="¿A que?"
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
+                                            />
+                                        )}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
                         {/* Intolerancias alimenticias */}
                         <div className="py-4 border-b-2 border-gray-900">
                             <YesNo label="Intolerancias alimenticias" value={foodIntolerances} onChange={(k, v) => setValue('foodIntolerances', handleExclusiveChange(foodIntolerances, k, v))} />
@@ -1022,11 +1281,111 @@ export const InitialHistoryScreen = () => {
                     {/* ==================== IV. ANTECEDENTES NO PATOLÓGICOS PERSONALES ==================== */}
                     <MemoizedSection title="IV. ANTECEDENTES NO PATOLÓGICOS PERSONALES">
                         {/* Hábitos / Adicciones */}
-                        <GroupSectionRHF title="Hábitos / Adicciones" list={C.HABITS_LIST} groupKey="habits" />
+                        <div className="mb-6 pb-4 border-b-2 border-gray-900 last:border-0 last:mb-0 last:pb-0">
+                            <YesNo label="Hábitos / Adicciones" value={habits} onChange={(k, v) => setValue('habits', handleExclusiveChange(habits, k, v), { shouldDirty: true })} />
+                            {habits?.yes && (
+                                <div className="pl-0 mt-4 bg-gray-50/50 p-3 md:p-4 rounded-xl border border-gray-200/50 animate-in fade-in slide-in-from-top-2">
+                                    <CheckboxList items={C.HABITS_LIST} data={(habits as any).conditions || habits.list || {}} onChange={(k, v) => {
+                                        const current = habits as any;
+                                        const listKey = current.conditions !== undefined ? 'conditions' : 'list';
+                                        setValue('habits', {
+                                            ...current,
+                                            [listKey]: { ...(current[listKey] || {}), [k]: v }
+                                        }, { shouldDirty: true });
+                                    }} />
 
-                        {/* Transfusiones Sanguíneas - Solo Sí/No */}
+                                    {/* Conditional details for specific habits */}
+                                    {(habits.list?.['Drogas'] || (habits as any).conditions?.['Drogas']) && (
+                                        <div className="mt-4 animate-in zoom-in-95 duration-200">
+                                            <Controller
+                                                name="habits.drugsDetails"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <FloatingLabelInput
+                                                        label="¿Cuáles Drogas?"
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        wrapperClassName="bg-white border-2 border-orange-200 rounded-xl focus-within:border-[#083C79]"
+                                                    />
+                                                )}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {(habits.list?.['Psicofarmacos'] || (habits as any).conditions?.['Psicofarmacos']) && (
+                                        <div className="mt-4 animate-in zoom-in-95 duration-200">
+                                            <Controller
+                                                name="habits.psychDetails"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <FloatingLabelInput
+                                                        label="¿Cuáles Psicofármacos?"
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        wrapperClassName="bg-white border-2 border-orange-200 rounded-xl focus-within:border-[#083C79]"
+                                                    />
+                                                )}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {(habits.list?.['Medicamentos controlados'] || (habits as any).conditions?.['Medicamentos controlados']) && (
+                                        <div className="mt-4 animate-in zoom-in-95 duration-200">
+                                            <Controller
+                                                name="habits.controlledDetails"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <FloatingLabelInput
+                                                        label="¿Cuáles Medicamentos?"
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        wrapperClassName="bg-white border-2 border-orange-200 rounded-xl focus-within:border-[#083C79]"
+                                                    />
+                                                )}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="mt-4">
+                                        <FloatingLabelInput
+                                            label="Otros / Detalles generales"
+                                            value={habits.other || ''}
+                                            onChange={(e) => setValue('habits', { ...habits, other: e.target.value }, { shouldDirty: true })}
+                                            wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Transfusiones Sanguíneas */}
                         <div className="py-4 border-b-2 border-gray-900">
-                            <YesNo label="Transfusiones Sanguíneas" value={transfusions} onChange={(k, v) => setValue('transfusions', handleExclusiveChange(transfusions, k, v))} />
+                            <YesNo label="Transfusiones Sanguíneas" value={transfusions} onChange={(k, v) => setValue('transfusions', handleExclusiveChange(transfusions, k, v), { shouldDirty: true })} />
+                        </div>
+
+                        {/* Reacciones post transfusionales */}
+                        <div className="py-4 border-b-2 border-gray-900">
+                            <YesNo
+                                label="Reacciones post transfusionales"
+                                value={transfusions.reactions}
+                                onChange={(k, v) => setValue('transfusions.reactions', handleExclusiveChange(transfusions.reactions, k, v), { shouldDirty: true })}
+                            />
+                            {transfusions.reactions?.yes && (
+                                <div className="mt-4 animate-in fade-in slide-in-from-top-2">
+                                    <Controller
+                                        name="transfusions.which"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <FloatingLabelInput
+                                                label="¿Cual (es)?"
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
+                                            />
+                                        )}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         {/* Exposiciones */}
@@ -1035,7 +1394,46 @@ export const InitialHistoryScreen = () => {
 
                     {/* ==================== V. ANTECEDENTES MÉDICOS FAMILIARES ==================== */}
                     <MemoizedSection title="V. ANTECEDENTES MÉDICOS FAMILIARES">
-                        <GroupSectionRHF title="Generales" list={C.FAMILY_LIST} groupKey="familyHistory" />
+                        <div className="mb-6 pb-4 border-b-2 border-gray-900 last:border-0 last:mb-0 last:pb-0">
+                            <YesNo label="Generales" value={familyHistory} onChange={(k, v) => setValue('familyHistory', handleExclusiveChange(familyHistory, k, v), { shouldDirty: true })} />
+                            {familyHistory?.yes && (
+                                <div className="pl-0 mt-4 bg-gray-50/50 p-3 md:p-4 rounded-xl border border-gray-200/50 animate-in fade-in slide-in-from-top-2">
+                                    <CheckboxList items={C.FAMILY_LIST} data={familyHistory.list || {}} onChange={(k, v) => {
+                                        setValue('familyHistory', {
+                                            ...familyHistory,
+                                            list: { ...(familyHistory.list || {}), [k]: v }
+                                        }, { shouldDirty: true });
+                                    }} />
+
+                                    {/* Conditional details for Cáncer */}
+                                    {(familyHistory.list?.['Cancer'] || familyHistory.list?.['Cáncer']) && (
+                                        <div className="mt-4 animate-in zoom-in-95 duration-200">
+                                            <Controller
+                                                name="familyHistory.cancerDetails"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <FloatingLabelInput
+                                                        label="¿Cuáles?"
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        wrapperClassName="bg-white border-2 border-orange-200 rounded-xl focus-within:border-[#083C79]"
+                                                    />
+                                                )}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="mt-4">
+                                        <FloatingLabelInput
+                                            label="Otra/cual?"
+                                            value={familyHistory.other || ''}
+                                            onChange={(e) => setValue('familyHistory', { ...familyHistory, other: e.target.value }, { shouldDirty: true })}
+                                            wrapperClassName="bg-white border-2 border-gray-900 rounded-xl"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </MemoizedSection>
 
                     {/* V. EXAMEN FÍSICO (Grid Numérico) */}
@@ -1287,7 +1685,7 @@ export const InitialHistoryScreen = () => {
                             </button>
 
                             <div className="relative group">
-                                <button type="button" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition flex items-center gap-2">
+                                <button type="button" className="bg-[#083C79] text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#062a55] transition flex items-center gap-2">
                                     <Plus size={16} /> Laboratorio
                                 </button>
                                 <div className="absolute top-full left-0 w-full h-4 bg-transparent z-10 hidden group-hover:block -mt-2"></div>
@@ -1364,10 +1762,10 @@ export const InitialHistoryScreen = () => {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className={`${isOnline ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20' : 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'} text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] pointer-events-auto disabled:opacity-50`}
+                            className={`${isOnline ? 'bg-[#083C79] hover:bg-[#062a55] shadow-[#083C79]/20' : 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'} text-white px-10 py-4 rounded-2xl font-black text-lg uppercase tracking-tight flex items-center gap-3 shadow-2xl transition-all transform hover:scale-[1.03] active:scale-[0.97] pointer-events-auto disabled:opacity-50`}
                         >
-                            {isOnline ? <Save size={20} /> : <WifiOff size={20} />}
-                            {isSubmitting ? 'Guardando...' : (isOnline ? 'Guardar' : 'Guardar en Local')}
+                            {isOnline ? <Save size={24} /> : <WifiOff size={24} />}
+                            {isSubmitting ? 'Guardando...' : (isOnline ? 'Guardar' : 'Guardar Localmente')}
                         </button>
                     </div>
                     <ObesityHistoryModal

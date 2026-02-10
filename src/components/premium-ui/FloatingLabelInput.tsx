@@ -36,7 +36,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement | HTMLTextAreaElem
                 animate={isFocused ? "focused" : "idle"}
                 variants={{
                     idle: { scale: 1, boxShadow: "0px 0px 0px rgba(0,0,0,0)" },
-                    focused: { scale: 1.02, boxShadow: "0px 10px 30px -10px rgba(0,0,0,0.1)" }
+                    focused: { scale: 1, boxShadow: "0px 10px 30px -10px rgba(0,0,0,0.1)" }
                 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 className={cn(

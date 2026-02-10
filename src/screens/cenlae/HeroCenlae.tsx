@@ -1,5 +1,5 @@
-import React from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 // Componente reutilizable para efecto de expansión de texto completo
 interface ExpandingBlockProps {
@@ -25,6 +25,7 @@ const ExpandingBlock = ({ children, delay = 0, className = '' }: ExpandingBlockP
 );
 
 export const HeroCenlae = () => {
+    const { t } = useTranslation();
     return (
         <div className="bg-white pb-6 sm:pb-8 lg:pb-10">
             {/* Contenedor Exterior - padding reducido en móvil */}
@@ -43,7 +44,7 @@ export const HeroCenlae = () => {
                             className="w-full h-full object-cover filter brightness-75 scale-105"
                         >
                             <source src="https://video.wixstatic.com/video/3743a7_d10ddd2a6d9f420db179933b6a4542d6/1080p/mp4/file.mp4" type="video/mp4" />
-                            Tu navegador no soporta video HTML5.
+                            {t('hero.video_not_supported')}
                         </video>
                         <div className="absolute inset-0 bg-black/10"></div>
                     </div>
@@ -55,10 +56,10 @@ export const HeroCenlae = () => {
                             style={{ textShadow: '0px 3px 8px rgba(0, 0, 0, 0.6)' }}
                         >
                             <ExpandingBlock delay={0.2}>
-                                Clínica de Endoscopia y Laparoscopia
+                                {t('hero.title_line1')}
                             </ExpandingBlock>
                             <ExpandingBlock delay={0.5}>
-                                de Alta Especialidad
+                                {t('hero.title_line2')}
                             </ExpandingBlock>
                         </h1>
                     </div>
@@ -69,7 +70,7 @@ export const HeroCenlae = () => {
             <div className="relative mt-4 sm:mt-6 lg:mt-8 flex justify-center px-4">
                 <ExpandingBlock delay={0.8}>
                     <button className="bg-cenlae-primary text-white text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold py-2 px-6 sm:px-8 rounded-lg shadow-md uppercase tracking-wide">
-                        Bienvenido
+                        {t('hero.welcome')}
                     </button>
                 </ExpandingBlock>
             </div>

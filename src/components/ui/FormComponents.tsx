@@ -12,12 +12,12 @@ export const CheckboxList = ({
 }: {
     items: string[], data: CheckboxData, onChange: (key: string, val: boolean) => void
 }) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
+    <div className="grid grid-cols-1 min-[450px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3 text-sm">
         {items.map(item => {
             const isChecked = !!data[item];
             return (
                 <label key={item} className={`${CHECKBOX_WRAPPER_CLASS} ${isChecked ? 'bg-blue-50 border-blue-100' : ''}`}>
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isChecked ? 'bg-blue-600 border-gray-900' : 'bg-white border-gray-900'}`}>
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${isChecked ? 'bg-[#083C79] border-gray-900' : 'bg-white border-gray-900'}`}>
                         {isChecked && <Check size={12} className="text-white" />}
                     </div>
                     <input
@@ -26,7 +26,7 @@ export const CheckboxList = ({
                         onChange={(e) => onChange(item, e.target.checked)}
                         className="hidden" // Hidden native checkbox
                     />
-                    <span className={`font-medium ${isChecked ? 'text-blue-800' : 'text-gray-600'}`}>{item}</span>
+                    <span className={`font-medium leading-tight ${isChecked ? 'text-[#083C79]' : 'text-gray-600'}`}>{item}</span>
                 </label>
             );
         })}
@@ -37,8 +37,8 @@ export const ToggleButton = ({ label, checked, onClick }: { label: string, check
     <button
         type="button"
         onClick={onClick}
-        className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all shadow-sm ${checked
-            ? 'bg-blue-600 text-white ring-2 ring-blue-200'
+        className={`px-3 py-1.5 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-semibold transition-all shadow-sm ${checked
+            ? 'bg-[#083C79] text-white ring-2 ring-blue-900/20'
             : 'bg-white text-gray-500 border-2 border-gray-900 hover:bg-gray-50'
             }`}
     >
@@ -49,17 +49,14 @@ export const ToggleButton = ({ label, checked, onClick }: { label: string, check
 export const YesNo = ({
     label, value, onChange
 }: {
-    label: string, value: { yes: boolean, no: boolean, na?: boolean },
-    onChange: (field: 'yes' | 'no' | 'na', val: boolean) => void
+    label: string, value: { yes: boolean, no: boolean },
+    onChange: (field: 'yes' | 'no', val: boolean) => void
 }) => (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-4 border-b border-gray-100 last:border-0 gap-3">
-        <span className="font-medium text-black">{label}</span>
-        <div className="flex gap-2">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 md:py-4 border-b border-gray-100 last:border-0 gap-2 md:gap-3">
+        <span className="font-medium text-black text-sm md:text-base">{label}</span>
+        <div className="flex gap-2 self-start sm:self-auto">
             <ToggleButton label="SI" checked={value.yes} onClick={() => onChange('yes', !value.yes)} />
             <ToggleButton label="NO" checked={value.no} onClick={() => onChange('no', !value.no)} />
-            {value.na !== undefined && (
-                <ToggleButton label="N/A" checked={value.na} onClick={() => onChange('na', !value.na)} />
-            )}
         </div>
     </div>
 );
@@ -89,53 +86,55 @@ export const PhysicalExamSection = ({
     };
 
     return (
-        <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
+        <div className="space-y-6 bg-white p-4 md:p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
             <h3 className={SECTION_TITLE_CLASS}>V. Examen Físico</h3>
 
             {!hideVitals && (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4 text-sm mb-8">
+                <div className="grid grid-cols-2 min-[450px]:grid-cols-3 md:grid-cols-4 lg:grid-cols-9 gap-3 md:gap-4 text-sm mb-6 md:mb-8">
                     {['fc', 'fr', 'temp', 'pa', 'pam', 'sat02', 'weight', 'height', 'imc'].map(k => (
                         <div key={k} className="flex flex-col">
-                            <label className="text-gray-500 text-[11px] uppercase font-bold mb-1.5 tracking-wider">{k}</label>
+                            <label className="text-gray-500 text-[10px] md:text-[11px] uppercase font-bold mb-1.5 tracking-wider">{k}</label>
                             <input
-                                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none text-center font-medium font-mono"
+                                type={k === 'imc' ? 'text' : 'number'}
+                                className="w-full px-2 py-2 md:px-3 bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none text-center font-medium font-mono"
                                 value={(data as any)[k]}
                                 onChange={(e) => onChange({ ...data, [k]: e.target.value })}
+                                readOnly={k === 'imc'}
                             />
                         </div>
                     ))}
                 </div>
             )}
 
-            <div className="glass rounded-2xl overflow-hidden border border-white/20 shadow-lg">
-                <table className="w-full text-sm text-left">
+            <div className="glass rounded-xl md:rounded-2xl overflow-hidden border border-white/20 shadow-lg overflow-x-auto">
+                <table className="w-full text-sm text-left min-w-[600px]">
                     <thead className="bg-[#154c8a]/5 text-[#154c8a] uppercase text-xs backdrop-blur-sm">
                         <tr>
-                            <th className="p-4 font-bold tracking-wide">Organos y Sistemas</th>
-                            <th className="p-4 text-center font-bold w-24">Normal</th>
-                            <th className="p-4 text-center font-bold w-24">Anormal</th>
-                            <th className="p-4 font-bold">Descripción</th>
+                            <th className="p-3 md:p-4 font-bold tracking-wide">Organos y Sistemas</th>
+                            <th className="p-3 md:p-4 text-center font-bold w-16 md:w-24">Normal</th>
+                            <th className="p-3 md:p-4 text-center font-bold w-16 md:w-24">Anormal</th>
+                            <th className="p-3 md:p-4 font-bold">Descripción</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100/50">
                         {C.SYSTEMS_LIST.map(sys => (
                             <tr key={sys} className="hover:bg-white/40 transition-colors duration-200">
-                                <td className="p-4 font-medium text-gray-700">{sys}</td>
-                                <td className="p-4 text-center">
+                                <td className="p-3 md:p-4 font-medium text-gray-700">{sys}</td>
+                                <td className="p-3 md:p-4 text-center">
                                     <div className="flex justify-center">
                                         <input type="checkbox" className="w-5 h-5 appearance-none border border-gray-300 rounded-md checked:bg-[#154c8a] checked:border-[#154c8a] transition-all cursor-pointer relative after:content-[''] after:absolute after:hidden checked:after:block after:left-[6px] after:top-[2px] after:w-[6px] after:h-[10px] after:border-white after:border-r-2 after:border-b-2 after:rotate-45 shadow-sm" checked={data.systems[sys]?.normal || false} onChange={e => updateSystem(sys, 'normal', e.target.checked)} />
                                     </div>
                                 </td>
-                                <td className="p-4 text-center">
+                                <td className="p-3 md:p-4 text-center">
                                     <div className="flex justify-center">
                                         <input type="checkbox" className="w-5 h-5 appearance-none border border-gray-300 rounded-md checked:bg-red-500 checked:border-red-500 transition-all cursor-pointer relative after:content-[''] after:absolute after:hidden checked:after:block after:left-[6px] after:top-[2px] after:w-[6px] after:h-[10px] after:border-white after:border-r-2 after:border-b-2 after:rotate-45 shadow-sm" checked={data.systems[sys]?.abnormal || false} onChange={e => updateSystem(sys, 'abnormal', e.target.checked)} />
                                     </div>
                                 </td>
-                                <td className="p-4">
+                                <td className="p-3 md:p-4">
                                     {data.systems[sys]?.abnormal && (
                                         <input
                                             className="w-full bg-transparent border-b border-gray-300 focus:border-[#154c8a] focus:outline-none text-gray-700 placeholder-gray-400 py-1 transition-colors"
-                                            placeholder="Describir hallazgos..."
+                                            placeholder="Describir..."
                                             value={data.systems[sys]?.description || ''}
                                             onChange={e => updateSystem(sys, 'description', e.target.value)}
                                         />

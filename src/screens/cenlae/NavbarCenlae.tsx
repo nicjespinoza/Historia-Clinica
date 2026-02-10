@@ -1,28 +1,31 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Globe, ChevronDown, Menu, X } from 'lucide-react';
+import { ChevronDown, Menu, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from '../../components/ui/LanguageSwitcher';
 
 interface NavbarCenlaeProps {
     activePage?: 'inicio' | 'perfil' | 'servicios' | 'contacto';
 }
 
 export const NavbarCenlae = ({ activePage = 'inicio' }: NavbarCenlaeProps) => {
+    const { t } = useTranslation();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const navLinks = [
-        { name: 'Inicio', href: '/', id: 'inicio' },
-        { name: 'Perfil', href: '/perfil', id: 'perfil' },
+        { name: t('nav.home'), href: '/', id: 'inicio' },
+        { name: t('nav.biography'), href: '/perfil', id: 'perfil' },
         {
-            name: 'Servicios',
+            name: t('nav.services'),
             href: '#',
             id: 'servicios',
             submenu: [
-                { name: 'Quirúrgicos', href: '/servicios/quirurgicos' },
-                { name: 'Endoscópicos', href: '/servicios/endoscopicos' },
+                { name: t('nav.surgical'), href: '/servicios/quirurgicos' },
+                { name: t('nav.endoscopic'), href: '/servicios/endoscopicos' },
             ]
         },
-        { name: 'Contacto', href: '/contacto', id: 'contacto' },
+        { name: t('nav.contact'), href: '/contacto', id: 'contacto' },
     ];
 
     return (
@@ -42,11 +45,7 @@ export const NavbarCenlae = ({ activePage = 'inicio' }: NavbarCenlaeProps) => {
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center space-x-8">
                         {/* Language Selector */}
-                        <div className="flex items-center text-black hover:text-cenlae-primary cursor-pointer transition-colors">
-                            <Globe className="w-4 h-4 mr-2" />
-                            <span className="text-sm font-medium">Español</span>
-                            <ChevronDown className="w-4 h-4 ml-1" />
-                        </div>
+                        <LanguageSwitcher variant="light" />
 
                         {/* Nav Links */}
                         <nav className="flex space-x-8">
@@ -86,13 +85,9 @@ export const NavbarCenlae = ({ activePage = 'inicio' }: NavbarCenlaeProps) => {
                         {/* CTA Button */}
                         <Link
                             to="/app/patient/login"
-                            // CAMBIOS AQUI:
-                            // 1. bg-black: Fondo negro
-                            // 2. text-white: Letras blancas
-                            // 3. hover:bg-cenlae-primary: Al pasar el mouse cambia al azul de tu marca
                             className="bg-black text-white px-6 py-2 rounded text-sm font-semibold hover:bg-cenlae-primary transition-colors"
                         >
-                            Acceso pacientes
+                            {t('nav.patient_portal')}
                         </Link>
                     </div>
 
@@ -154,8 +149,12 @@ export const NavbarCenlae = ({ activePage = 'inicio' }: NavbarCenlaeProps) => {
                                 to="/app/patient/login"
                                 className="block w-full text-center bg-gray-100 text-gray-500 px-6 py-3 rounded text-sm font-semibold mt-4"
                             >
-                                Acceso pacientes
+                                {t('nav.patient_portal')}
                             </Link>
+
+                            <div className="pt-4 flex justify-center">
+                                <LanguageSwitcher variant="light" />
+                            </div>
                         </div>
                     </motion.div>
                 )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Eye, Plus, Edit, Trash2 } from 'lucide-react';
+import { Activity, Eye, Plus, Edit, Trash2, ClipboardList } from 'lucide-react';
 import { ActionButtonSmall } from './SharedComponents';
 import { Patient, SubsequentConsult } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -10,9 +10,10 @@ interface ConsultListProps {
     navigate: (path: string, options?: any) => void;
     onDelete: (id: string) => void;
     onCreate?: () => void;
+    onViewOrders?: (item: any) => void;
 }
 
-export const ConsultList: React.FC<ConsultListProps> = ({ patient, consults, navigate, onDelete, onCreate }) => {
+export const ConsultList: React.FC<ConsultListProps> = ({ patient, consults, navigate, onDelete, onCreate, onViewOrders }) => {
     const { role } = useAuth();
     const isAssistant = role === 'assistant';
 
@@ -72,7 +73,7 @@ export const ConsultList: React.FC<ConsultListProps> = ({ patient, consults, nav
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 
                                 {/* Doctor Action: Complete Pending Consult */}
-                                {!isAssistant && c.status === 'draft' && (
+                                {c.status === 'draft' && (
                                     <>
                                         <button
                                             onClick={() => navigate(`/app/consult/${patient.id}`, { state: { consult: c } })}
@@ -98,20 +99,23 @@ export const ConsultList: React.FC<ConsultListProps> = ({ patient, consults, nav
                                             onClick={() => navigate(`/app/consult-view/${patient.id}/${c.id}`)}
                                             color="blue"
                                         />
-                                        {!isAssistant && (
-                                            <>
-                                                <ActionButtonSmall
-                                                    icon={<Edit size={16} />}
-                                                    onClick={() => navigate(`/app/consult/${patient.id}`, { state: { consult: c } })}
-                                                    color="amber"
-                                                />
-                                                <ActionButtonSmall
-                                                    icon={<Trash2 size={16} />}
-                                                    onClick={() => onDelete(c.id)}
-                                                    color="red"
-                                                />
-                                            </>
+                                        {Array.isArray(c.medicalOrders) && c.medicalOrders.length > 0 && (
+                                            <ActionButtonSmall
+                                                icon={<ClipboardList size={16} />}
+                                                onClick={() => onViewOrders?.(c)}
+                                                color="emerald"
+                                            />
                                         )}
+                                        <ActionButtonSmall
+                                            icon={<Edit size={16} />}
+                                            onClick={() => navigate(`/app/consult/${patient.id}`, { state: { consult: c } })}
+                                            color="amber"
+                                        />
+                                        <ActionButtonSmall
+                                            icon={<Trash2 size={16} />}
+                                            onClick={() => onDelete(c.id)}
+                                            color="red"
+                                        />
                                     </>
                                 )}
                             </div>

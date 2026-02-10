@@ -1,18 +1,7 @@
-import React from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
-// Datos de ejemplo
-const experienciaLaboral = [
-    { text: 'Jefe del Centro de Endoscopia', subtext: 'Hospital Vivian Pellas.' },
-    { text: 'Cirujano Endoscopista Gastrointestinal', subtext: 'Hospital Vivian Pellas.' },
-    { text: 'Jefe de Cirugía General y Endoscopia', subtext: 'Hospital SUMEDICO.' },
-];
-
-const formacionAcademica = [
-    { text: 'Postgrado en Enteroscopia y Capsula', subtext: 'Mexico' },
-    { text: 'Alta Especialidad de Ultrasonido Endoscópico', subtext: 'Mexico' },
-    { text: 'Cirugía Laparoscópica y Toracoscopia', subtext: 'Argentina' },
-];
+// Hardcoded defaults removed, now handled by locales
 
 // Componente reutilizable para animaciones suaves
 const ExpandingBlock = ({ children, delay = 0, className = '' }: { children: React.ReactNode, delay?: number, className?: string }) => (
@@ -57,38 +46,46 @@ const TimelineItemClean = ({ text, subtext, isLast, index, delay = 0 }: { text: 
 );
 
 // Sección de Lista CON CÁLCULO DE DELAY
-const TimelineSectionClean = ({ title, items, delay = 0 }: { title: string, items: { text: string, subtext: string }[], delay?: number }) => (
-    <div className="w-full flex flex-col items-center mb-6 last:mb-0">
-        <ExpandingBlock delay={delay}>
-            <h3 className="text-xl sm:text-2xl font-bold text-black mb-4 text-center">
-                {title}
-            </h3>
-        </ExpandingBlock>
+const TimelineSectionClean = ({ title, items, delay = 0 }: { title: string, items: { text: string, subtext: string }[], delay?: number }) => {
+    const { t } = useTranslation();
+    return (
+        <div className="w-full flex flex-col items-center mb-6 last:mb-0">
+            <ExpandingBlock delay={delay}>
+                <h3 className="text-xl sm:text-2xl font-bold text-black mb-4 text-center">
+                    {title}
+                </h3>
+            </ExpandingBlock>
 
-        <div className="flex flex-col w-full items-center">
-            {items.map((item, index) => (
-                <TimelineItemClean
-                    key={index}
-                    text={item.text}
-                    subtext={item.subtext}
-                    isLast={index === items.length - 1}
-                    index={index}
-                    delay={delay + (index * 0.3)}
-                />
-            ))}
-        </div>
-
-        <ExpandingBlock delay={delay + (items.length * 0.3) + 0.1}>
-            <div className="mt-2">
-                <a href="#" className="text-black text-xs font-bold hover:underline tracking-wide">
-                    Ver mas..
-                </a>
+            <div className="flex flex-col w-full items-center">
+                {items.map((item, index) => (
+                    <TimelineItemClean
+                        key={index}
+                        text={item.text}
+                        subtext={item.subtext}
+                        isLast={index === items.length - 1}
+                        index={index}
+                        delay={delay + (index * 0.3)}
+                    />
+                ))}
             </div>
-        </ExpandingBlock>
-    </div>
-);
+
+            <ExpandingBlock delay={delay + (items.length * 0.3) + 0.1}>
+                <div className="mt-2">
+                    <a href="#" className="text-black text-xs font-bold hover:underline tracking-wide">
+                        {t('profile.see_more')}
+                    </a>
+                </div>
+            </ExpandingBlock>
+        </div>
+    );
+};
 
 export const ProfileCenlae = () => {
+    const { t } = useTranslation();
+
+    const experienceItems = t('profile.experience_items', { returnObjects: true }) as any[];
+    const educationItems = t('profile.education_items', { returnObjects: true }) as any[];
+
     return (
         <section className="bg-white py-8" id="profile">
             <div className="w-full px-4">
@@ -119,22 +116,16 @@ export const ProfileCenlae = () => {
                                 {/* Título */}
                                 <ExpandingBlock delay={0.1}>
                                     <h2 className="text-2xl lg:text-4xl font-semibold leading-tight">
-                                        Experiencia y Tecnología al servicio de su salud
+                                        {t('profile.title')}
                                     </h2>
                                 </ExpandingBlock>
 
                                 {/* Texto Descriptivo */}
                                 <ExpandingBlock delay={0.3}>
                                     <div className="space-y-4 text-blue-50 text-sm lg:text-base font-medium leading-relaxed">
-                                        <p>
-                                            Con más de una década de experiencia en Endoscopía y Laparoscopía Avanzada, estoy comprometido con ofrecer diagnósticos precisos.
-                                        </p>
-                                        <p>
-                                            Cada procedimiento se realiza con dedicación, priorizando siempre su salud y bienestar con técnicas mínimamente invasivas.
-                                        </p>
-                                        <p>
-                                            Mi misión es brindarle un servicio médico de calidad, personalizado y confiable.
-                                        </p>
+                                        <p>{t('profile.p1')}</p>
+                                        <p>{t('profile.p2')}</p>
+                                        <p>{t('profile.p3')}</p>
                                     </div>
                                 </ExpandingBlock>
 
@@ -142,10 +133,10 @@ export const ProfileCenlae = () => {
                                 <ExpandingBlock delay={0.5}>
                                     <div className="pt-4">
                                         <p className="font-semibold text-white text-xl lg:text-3xl mb-6">
-                                            ¡Su salud es mi prioridad!
+                                            {t('profile.priority')}
                                         </p>
                                         <button className="bg-white text-cenlae-primary font-bold py-2 px-6 rounded-lg shadow hover:bg-gray-100 transition-colors text-sm sm:text-base">
-                                            Más información
+                                            {t('profile.more_info')}
                                         </button>
                                     </div>
                                 </ExpandingBlock>
@@ -155,11 +146,11 @@ export const ProfileCenlae = () => {
 
                         {/* COLUMNA 3: LISTAS ANIMADAS (Derecha) */}
                         <div className="md:col-span-2 lg:col-span-3 flex flex-col justify-center py-4 lg:pl-4">
-                            <TimelineSectionClean title="Experiencia Laboral" items={experienciaLaboral} delay={0.6} />
+                            <TimelineSectionClean title={t('profile.experience_title')} items={experienceItems} delay={0.6} />
 
                             <div className="h-4"></div>
 
-                            <TimelineSectionClean title="Formación Académica" items={formacionAcademica} delay={0.8} />
+                            <TimelineSectionClean title={t('profile.education_title')} items={educationItems} delay={0.8} />
                         </div>
 
                     </div>

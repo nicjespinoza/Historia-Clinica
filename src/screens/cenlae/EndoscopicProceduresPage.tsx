@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavbarCenlae } from './NavbarCenlae';
 import { FooterCenlae } from './FooterCenlae';
 
 export const EndoscopicProceduresPage = () => {
+    const { t } = useTranslation();
     // Scroll to top on mount
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -15,20 +17,20 @@ export const EndoscopicProceduresPage = () => {
             <main className="flex-grow bg-[#0a3d75] py-12 px-4 md:px-8">
                 <div className="max-w-7xl mx-auto">
                     <h1 className="text-center text-4xl md:text-5xl font-bold text-white mb-12 uppercase tracking-wide drop-shadow-md">
-                        Endoscópicos
+                        {t('nav.endoscopic')}
                     </h1>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-16 gap-x-8">
                         {/* Item 1: Endoscopia Alta */}
                         <div className="flex flex-col items-center group">
                             <div className="bg-white dark:bg-surface-dark text-black font-bold text-lg md:text-xl px-8 py-3 rounded-2xl border border-gray-300 dark:border-slate-600 shadow-lg mb-[-1.5rem] z-10 w-auto text-center transform group-hover:-translate-y-1 transition-transform duration-300">
-                                Endoscopia Alta
+                                {t('services.endoscopic_items.0.title')}
                             </div>
                             <div className="bg-white dark:bg-slate-800 rounded-3xl p-4 pt-10 pb-8 shadow-2xl w-full h-full flex flex-col border border-white/10">
                                 <div className="rounded-2xl overflow-hidden shadow-inner border border-gray-100 dark:border-slate-700">
                                     <img alt="Procedimiento de Endoscopia Alta con doctores y paciente" className="w-full h-64 object-cover object-top hover:scale-105 transition-transform duration-500" src="https://static.wixstatic.com/media/3743a7_c09e3d74cca946b69ca398f6ff5a3663~mv2.jpg/v1/crop/x_241,y_0,w_459,h_521/fill/w_544,h_620,al_c,lg_1,q_80,enc_avif,quality_auto/Top-a-2.jpg" />
                                 </div>
                                 <p className="mt-6 text-gray-800 dark:text-gray-200 text-center leading-relaxed font-medium px-2">
-                                    Procedimiento endoscópico que permite la evaluación interna del esófago, estómago y duodeno con fines diagnósticos y de tratamiento.
+                                    {t('services.endoscopic_items.0.desc')}
                                 </p>
                             </div>
                         </div>
@@ -172,11 +174,7 @@ export const EndoscopicProceduresPage = () => {
                 </div>
             </main>
 
-            <div className="fixed bottom-6 right-6 z-50">
-                <button className="bg-blue-800 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white p-4 rounded-full shadow-lg transition-transform hover:scale-110 flex items-center justify-center w-14 h-14">
-                    <span className="material-symbols-outlined">chat_bubble</span>
-                </button>
-            </div>
+
 
             <FooterCenlae />
         </div>

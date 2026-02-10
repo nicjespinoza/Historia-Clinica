@@ -7,65 +7,29 @@ import { z } from 'zod';
 /** Yes/No toggle (mutually exclusive) */
 export const yesNoSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-});
+    no: z.boolean().default(true),
+}).default({ yes: false, no: true });
 
-/** Yes/No with N/A option */
+/** Yes/No with legacy N/A compatibility (removed NA) */
 export const yesNoNaSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    na: z.boolean().default(false),
-});
+    no: z.boolean().default(true),
+}).default({ yes: false, no: true });
 
 /** Dynamic checkbox data (key-value pairs) */
-export const checkboxDataSchema = z.record(z.string(), z.boolean());
+export const checkboxDataSchema = z.any().transform(v => (v && typeof v === 'object' && !Array.isArray(v)) ? v : {}).default({});
 
 /** Medical condition group with yes/no, conditions list, and other field */
 export const conditionGroupSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    conditions: checkboxDataSchema.default({}),
-    other: z.string().default(''),
-});
+    no: z.boolean().default(true),
+    conditions: checkboxDataSchema,
+    cancerDetails: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    other: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, conditions: {}, cancerDetails: '', other: '' });
 
-// ============================================
-// Patient Schema (RegisterScreen)
-// ============================================
 
-export const patientSchema = z.object({
-    firstName: z.string().min(1, 'El nombre es requerido'),
-    lastName: z.string().min(1, 'Los apellidos son requeridos'),
-    birthDate: z.string().min(1, 'La fecha de nacimiento es requerida'),
-    sex: z.enum(['Masculino', 'Femenino'], {
-        error: 'Seleccione el sexo',
-    }),
-    nationality: z.string().default(''),
-    profession: z.string().default(''),
-    email: z.string().email('Email inválido').or(z.literal('')).default(''),
-    phone: z.string().default(''),
-    phoneSecondary: z.string().default(''),
-    address: z.string().default(''),
-    initialReason: z.string().default(''),
-    // Contacto de emergencia
-    emergencyContactName: z.string().default(''),
-    emergencyContactPhone: z.string().default(''),
-    emergencyContactEmail: z.string().default(''),
-    emergencyContactRelation: z.string().default(''),
-    // Signos vitales iniciales
-    vitalSigns: z.object({
-        fc: z.string().default(''),
-        fr: z.string().default(''),
-        temp: z.string().default(''),
-        pa: z.string().default(''),
-        pam: z.string().default(''),
-        sat02: z.string().default(''),
-        weight: z.string().default(''),
-        height: z.string().default(''),
-        imc: z.string().default(''),
-    }).optional(),
-});
 
-export type PatientFormData = z.infer<typeof patientSchema>;
 
 // ============================================
 // Physical Exam Schema
@@ -96,20 +60,27 @@ export const physicalExamSchema = z.object({
 
 export const gynecoSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    na: z.boolean().default(false),
-    conditions: checkboxDataSchema.default({}),
-    other: z.string().default(''),
-    g: z.string().default(''),
-    p: z.string().default(''),
-    a: z.string().default(''),
-    c: z.string().default(''),
-    surgeries: z.string().default(''),
-    gestationalDiabetes: yesNoSchema.default({ yes: false, no: false }),
-    preeclampsia: yesNoSchema.default({ yes: false, no: false }),
-    eclampsia: yesNoSchema.default({ yes: false, no: false }),
-    pregnancySuspicion: yesNoNaSchema.default({ yes: false, no: false, na: false }),
-    breastfeeding: yesNoNaSchema.default({ yes: false, no: false, na: false }),
+    no: z.boolean().default(true),
+    conditions: checkboxDataSchema,
+    other: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    g: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    p: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    a: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    c: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    surgeries: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    gestationalDiabetes: yesNoSchema,
+    preeclampsia: yesNoSchema,
+    eclampsia: yesNoSchema,
+    pregnancySuspicion: yesNoSchema,
+    breastfeeding: yesNoSchema,
+}).default({
+    yes: false, no: true, conditions: {}, other: '',
+    g: '', p: '', a: '', c: '', surgeries: '',
+    gestationalDiabetes: { yes: false, no: true },
+    preeclampsia: { yes: false, no: true },
+    eclampsia: { yes: false, no: true },
+    pregnancySuspicion: { yes: false, no: true },
+    breastfeeding: { yes: false, no: true },
 });
 
 // ============================================
@@ -118,55 +89,60 @@ export const gynecoSchema = z.object({
 
 export const regularMedsSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    list: checkboxDataSchema.default({}),
-    other: z.string().default(''),
-    specific: z.string().default(''),
-    description: z.string().default(''), // Alias for specific, used in some forms
-});
+    no: z.boolean().default(true),
+    list: checkboxDataSchema,
+    other: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    specific: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    description: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, list: {}, other: '', specific: '', description: '' });
 
 export const naturalMedsSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    description: z.string().default(''),
-});
+    no: z.boolean().default(true),
+    description: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, description: '' });
 
 export const hospitalizationsSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    reason: z.string().default(''),
-});
+    no: z.boolean().default(true),
+    reason: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, reason: '' });
 
 export const surgeriesSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    list: z.string().default(''),
-});
+    no: z.boolean().default(true),
+    list: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, list: '' });
 
 export const endoscopySchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    list: z.string().default(''),
-    results: z.string().default(''),
-});
+    no: z.boolean().default(true),
+    list: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    results: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    procedures: z.array(z.object({
+        which: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+        lastDate: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+        results: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    })).default([]),
+}).default({ yes: false, no: true, list: '', results: '', procedures: [] });
 
 export const complicationsSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    list: z.string().default(''),
-});
+    no: z.boolean().default(true),
+    list: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, list: '' });
 
 export const implantsSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    which: z.string().default(''),
-});
+    no: z.boolean().default(true),
+    which: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, which: '' });
 
 export const devicesSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    which: z.string().default(''),
-});
+    no: z.boolean().default(true),
+    which: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, which: '' });
 
 // ============================================
 // Allergies
@@ -174,17 +150,17 @@ export const devicesSchema = z.object({
 
 export const allergiesSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    list: checkboxDataSchema.default({}),
-    other: z.string().default(''),
-});
+    no: z.boolean().default(true),
+    list: checkboxDataSchema,
+    other: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, list: {}, other: '' });
 
 export const foodIntolerancesSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    list: checkboxDataSchema.default({}),
-    other: z.string().default(''), // Added for form compatibility
-});
+    no: z.boolean().default(true),
+    list: checkboxDataSchema,
+    other: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, list: {}, other: '' });
 
 // ============================================
 // Non-Pathological Antecedents
@@ -192,24 +168,37 @@ export const foodIntolerancesSchema = z.object({
 
 export const habitsSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    list: checkboxDataSchema.default({}),
-    other: z.string().default(''),
+    no: z.boolean().default(true),
+    list: checkboxDataSchema,
+    drugsDetails: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    psychDetails: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    controlledDetails: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    details: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    other: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({
+    yes: false,
+    no: true,
+    list: {},
+    drugsDetails: '',
+    psychDetails: '',
+    controlledDetails: '',
+    details: '',
+    other: ''
 });
 
 export const transfusionsSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    reactions: z.boolean().default(false),
-    which: z.string().default(''),
-});
+    no: z.boolean().default(true),
+    reactions: yesNoSchema,
+    which: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, reactions: { yes: false, no: true }, which: '' });
 
 export const exposuresSchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    list: checkboxDataSchema.default({}),
-    other: z.string().default(''),
-});
+    no: z.boolean().default(true),
+    list: checkboxDataSchema,
+    other: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, list: {}, other: '' });
 
 // ============================================
 // Family History
@@ -217,10 +206,11 @@ export const exposuresSchema = z.object({
 
 export const familyHistorySchema = z.object({
     yes: z.boolean().default(false),
-    no: z.boolean().default(false),
-    list: checkboxDataSchema.default({}),
-    other: z.string().default(''),
-});
+    no: z.boolean().default(true),
+    list: checkboxDataSchema,
+    cancerDetails: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    other: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+}).default({ yes: false, no: true, list: {}, cancerDetails: '', other: '' });
 
 // ============================================
 // Obesity History (Optional)
@@ -286,6 +276,49 @@ export const obesityHistorySchema = z.object({
 }).optional();
 
 // ============================================
+// Patient Schema (RegisterScreen)
+// ============================================
+
+export const patientSchema = z.object({
+    firstName: z.string().default(''),
+    lastName: z.string().default(''),
+    birthDate: z.string().default(''),
+    sex: z.enum(['Masculino', 'Femenino'], {
+        error: 'Seleccione el sexo',
+    }).default('Masculino'),
+    nationality: z.string().default(''),
+    profession: z.string().default(''),
+    email: z.string().email('Email inválido').or(z.literal('')).default(''),
+    phone: z.string().default(''),
+    phoneSecondary: z.string().default(''),
+    address: z.string().default(''),
+    initialReason: z.string().default(''),
+    motives: checkboxDataSchema,
+    motivesCancerDetails: z.string().default(''),
+    motivesOther: z.string().default(''),
+    // Contacto de emergencia
+    emergencyContactName: z.string().default(''),
+    emergencyContactPhone: z.string().default(''),
+    emergencyContactEmail: z.string().default(''),
+    emergencyContactRelation: z.string().default(''),
+    // Signos vitales iniciales
+    vitalSigns: z.object({
+        fc: z.string().default(''),
+        fr: z.string().default(''),
+        temp: z.string().default(''),
+        pa: z.string().default(''),
+        pam: z.string().default(''),
+        sat02: z.string().default(''),
+        weight: z.string().default(''),
+        height: z.string().default(''),
+        imc: z.string().default(''),
+    }).optional(),
+    obesityHistory: obesityHistorySchema,
+});
+
+export type PatientFormData = z.infer<typeof patientSchema>;
+
+// ============================================
 // Initial History Schema (InitialHistoryScreen)
 // ============================================
 
@@ -296,84 +329,82 @@ export const initialHistorySchema = z.object({
     time: z.string(),
 
     // Motives
-    motives: checkboxDataSchema.default({}),
+    motives: checkboxDataSchema,
+    motivesCancerDetails: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
     otherMotive: z.string().default(''),
-    evolutionTime: z.string().default(''),
-    historyOfPresentIllness: z.string().default(''),
+    evolutionTime: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    historyOfPresentIllness: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
 
     // Section I: Personal Medical Antecedents
-    preExistingDiseases: yesNoSchema.default({ yes: false, no: false }),
-    neurological: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }),
-    metabolic: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }),
-    dermatologic: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }), // NUEVO
-    respiratory: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }),
-    cardiac: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }),
-    gastro: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }),
-    hepato: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }),
-    peripheral: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }),
-    hematological: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }),
-    renal: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }),
-    rheumatological: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }),
-    infectious: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }),
-    psychiatric: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }),
-    gynecoPathological: conditionGroupSchema.default({ yes: false, no: false, conditions: {}, other: '' }), // NUEVO
+    preExistingDiseases: yesNoSchema,
+    neurological: conditionGroupSchema,
+    metabolic: conditionGroupSchema,
+    dermatologic: conditionGroupSchema,
+    respiratory: conditionGroupSchema,
+    cardiac: conditionGroupSchema,
+    gastro: conditionGroupSchema,
+    hepato: conditionGroupSchema,
+    peripheral: conditionGroupSchema,
+    hematological: conditionGroupSchema,
+    renal: conditionGroupSchema,
+    rheumatological: conditionGroupSchema,
+    infectious: conditionGroupSchema,
+    psychiatric: conditionGroupSchema,
+    gynecoPathological: conditionGroupSchema,
 
     // Gyneco
-    gyneco: gynecoSchema.default({
-        yes: false, no: false, na: false, conditions: {}, other: '',
-        g: '', p: '', a: '', c: '', surgeries: '',
-        gestationalDiabetes: { yes: false, no: false },
-        preeclampsia: { yes: false, no: false },
-        eclampsia: { yes: false, no: false },
-        pregnancySuspicion: { yes: false, no: false, na: false },
-        breastfeeding: { yes: false, no: false, na: false },
-    }),
+    gyneco: gynecoSchema,
 
     // Medications & Other
-    regularMeds: regularMedsSchema.default({ yes: false, no: false, list: {}, other: '', specific: '', description: '' }),
-    naturalMeds: naturalMedsSchema.default({ yes: false, no: false, description: '' }),
-    hospitalizations: hospitalizationsSchema.default({ yes: false, no: false, reason: '' }),
-    surgeries: surgeriesSchema.default({ yes: false, no: false, list: '' }),
-    endoscopy: endoscopySchema.default({ yes: false, no: false, list: '', results: '' }),
-    complications: complicationsSchema.default({ yes: false, no: false, list: '' }),
+    regularMeds: regularMedsSchema,
+    naturalMeds: naturalMedsSchema,
+    hospitalizations: hospitalizationsSchema,
+    surgeries: surgeriesSchema,
+    endoscopy: endoscopySchema,
+    complications: complicationsSchema,
 
     // Allergies
-    allergies: allergiesSchema.default({ yes: false, no: false, list: {}, other: '' }),
-    foodAllergies: allergiesSchema.default({ yes: false, no: false, list: {}, other: '' }),
-    foodIntolerances: foodIntolerancesSchema.default({ yes: false, no: false, list: {}, other: '' }),
+    allergies: allergiesSchema,
+    anaphylaxis: z.object({
+        yes: z.boolean().default(false),
+        no: z.boolean().default(true),
+        description: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    }).default({ yes: false, no: true, description: '' }),
+    foodAllergies: allergiesSchema,
+    foodIntolerances: foodIntolerancesSchema,
 
     // Implants
-    implants: implantsSchema.default({ yes: false, no: false, which: '' }),
-    devices: devicesSchema.default({ yes: false, no: false, which: '' }),
+    implants: implantsSchema,
+    devices: devicesSchema,
 
     // Section II: Non-Pathological
-    habits: habitsSchema.default({ yes: false, no: false, list: {}, other: '' }),
-    transfusions: transfusionsSchema.default({ yes: false, no: false, reactions: false, which: '' }),
-    exposures: exposuresSchema.default({ yes: false, no: false, list: {}, other: '' }),
+    habits: habitsSchema,
+    transfusions: transfusionsSchema,
+    exposures: exposuresSchema,
 
     // Section III & IV: Family
-    familyHistory: familyHistorySchema.default({ yes: false, no: false, list: {}, other: '' }),
-    familyGastro: familyHistorySchema.default({ yes: false, no: false, list: {}, other: '' }),
+    familyHistory: familyHistorySchema,
+    familyGastro: familyHistorySchema,
 
     // Previous Studies
     previousStudies: z.object({
         yes: z.boolean().default(false),
-        no: z.boolean().default(false),
-        description: z.string().default(''),
-    }).default({ yes: false, no: false, description: '' }),
+        no: z.boolean().default(true),
+        description: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    }).default({ yes: false, no: true, description: '' }),
 
     // Comments
-    comments: z.string().default(''),
+    comments: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
 
     // Treatment
     treatment: z.object({
-        food: z.string().default(''),
-        meds: z.string().default(''),
-        exams: z.string().default(''),
-        norms: z.string().default(''),
+        food: z.union([z.string(), z.array(z.string())]).default(''),
+        meds: z.union([z.string(), z.array(z.string())]).default(''),
+        exams: z.union([z.string(), z.array(z.string())]).default(''),
+        norms: z.union([z.string(), z.array(z.string())]).default(''),
     }).default({ food: '', meds: '', exams: '', norms: '' }),
 
-    // Orders
+    // Orders (Legacy)
     orders: z.object({
         medical: z.object({ included: z.boolean().default(false), details: z.string().default('') }),
         prescription: z.object({ included: z.boolean().default(false), details: z.string().default('') }),
@@ -388,6 +419,14 @@ export const initialHistorySchema = z.object({
         endoscopy: { included: false, details: '' },
     }),
 
+    // New Structured Medical Orders
+    medicalOrders: z.array(z.object({
+        id: z.string(),
+        type: z.enum(['prescription', 'lab_general', 'lab_basic', 'lab_extended', 'lab_feces', 'image', 'endoscopy']),
+        diagnosis: z.string().default(''),
+        content: z.string().default('')
+    })).optional().default([]),
+
     // Section V: Physical Exam
     physicalExam: physicalExamSchema.default({
         fc: '', fr: '', temp: '', pa: '', pam: '', sat02: '', weight: '', height: '', imc: '',
@@ -395,7 +434,8 @@ export const initialHistorySchema = z.object({
     }),
 
     // Diagnosis
-    diagnosis: z.string().default(''),
+    diagnosis: z.any().transform(v => typeof v === 'string' ? v : '').default(''),
+    diagnoses: z.array(z.string()).optional(), // Added for array support
     isValidated: z.boolean().default(true),
 
     // Consultation Cost
@@ -423,6 +463,9 @@ export const getDefaultPatientValues = (): PatientFormData => ({
     phoneSecondary: '',
     address: '',
     initialReason: '',
+    motives: {},
+    motivesCancerDetails: '',
+    motivesOther: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
     emergencyContactEmail: '',
@@ -438,49 +481,60 @@ export const getDefaultInitialHistoryValues = (patientId: string): InitialHistor
     date: new Date().toISOString().split('T')[0],
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     motives: {},
+    motivesCancerDetails: '',
     otherMotive: '',
     evolutionTime: '',
     historyOfPresentIllness: '',
-    preExistingDiseases: { yes: false, no: false },
-    neurological: { yes: false, no: false, conditions: {}, other: '' },
-    metabolic: { yes: false, no: false, conditions: {}, other: '' },
-    dermatologic: { yes: false, no: false, conditions: {}, other: '' }, // NUEVO
-    respiratory: { yes: false, no: false, conditions: {}, other: '' },
-    cardiac: { yes: false, no: false, conditions: {}, other: '' },
-    gastro: { yes: false, no: false, conditions: {}, other: '' },
-    hepato: { yes: false, no: false, conditions: {}, other: '' },
-    peripheral: { yes: false, no: false, conditions: {}, other: '' },
-    hematological: { yes: false, no: false, conditions: {}, other: '' },
-    renal: { yes: false, no: false, conditions: {}, other: '' },
-    rheumatological: { yes: false, no: false, conditions: {}, other: '' },
-    infectious: { yes: false, no: false, conditions: {}, other: '' },
-    psychiatric: { yes: false, no: false, conditions: {}, other: '' },
-    gynecoPathological: { yes: false, no: false, conditions: {}, other: '' }, // NUEVO
+    preExistingDiseases: { yes: false, no: true },
+    neurological: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    metabolic: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    dermatologic: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    respiratory: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    cardiac: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    gastro: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    hepato: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    peripheral: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    hematological: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    renal: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    rheumatological: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    infectious: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    psychiatric: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
+    gynecoPathological: { yes: false, no: true, conditions: {}, cancerDetails: '', other: '' },
     gyneco: {
-        yes: false, no: false, na: false, conditions: {}, other: '',
+        yes: false, no: true, conditions: {}, other: '',
         g: '', p: '', a: '', c: '', surgeries: '',
-        gestationalDiabetes: { yes: false, no: false },
-        preeclampsia: { yes: false, no: false },
-        eclampsia: { yes: false, no: false },
-        pregnancySuspicion: { yes: false, no: false, na: false },
-        breastfeeding: { yes: false, no: false, na: false },
+        gestationalDiabetes: { yes: false, no: true },
+        preeclampsia: { yes: false, no: true },
+        eclampsia: { yes: false, no: true },
+        pregnancySuspicion: { yes: false, no: true },
+        breastfeeding: { yes: false, no: true },
     },
-    regularMeds: { yes: false, no: false, list: {}, other: '', specific: '', description: '' },
-    naturalMeds: { yes: false, no: false, description: '' },
-    hospitalizations: { yes: false, no: false, reason: '' },
-    surgeries: { yes: false, no: false, list: '' },
-    endoscopy: { yes: false, no: false, list: '', results: '' },
-    complications: { yes: false, no: false, list: '' },
-    allergies: { yes: false, no: false, list: {}, other: '' },
-    foodAllergies: { yes: false, no: false, list: {}, other: '' },
-    foodIntolerances: { yes: false, no: false, list: {}, other: '' },
-    implants: { yes: false, no: false, which: '' },
-    devices: { yes: false, no: false, which: '' },
-    habits: { yes: false, no: false, list: {}, other: '' },
-    transfusions: { yes: false, no: false, reactions: false, which: '' },
-    exposures: { yes: false, no: false, list: {}, other: '' },
-    familyHistory: { yes: false, no: false, list: {}, other: '' },
-    familyGastro: { yes: false, no: false, list: {}, other: '' },
+    regularMeds: { yes: false, no: true, list: {}, other: '', specific: '', description: '' },
+    naturalMeds: { yes: false, no: true, description: '' },
+    hospitalizations: { yes: false, no: true, reason: '' },
+    surgeries: { yes: false, no: true, list: '' },
+    endoscopy: { yes: false, no: true, list: '', results: '', procedures: [{ which: '', lastDate: '', results: '' }] },
+    complications: { yes: false, no: true, list: '' },
+    allergies: { yes: false, no: true, list: {}, other: '' },
+    anaphylaxis: { yes: false, no: true, description: '' },
+    foodAllergies: { yes: false, no: true, list: {}, other: '' },
+    foodIntolerances: { yes: false, no: true, list: {}, other: '' },
+    implants: { yes: false, no: true, which: '' },
+    devices: { yes: false, no: true, which: '' },
+    habits: {
+        yes: false,
+        no: true,
+        list: {},
+        drugsDetails: '',
+        psychDetails: '',
+        controlledDetails: '',
+        details: '',
+        other: ''
+    },
+    transfusions: { yes: false, no: true, reactions: { yes: false, no: true }, which: '' },
+    exposures: { yes: false, no: true, list: {}, other: '' },
+    familyHistory: { yes: false, no: true, list: {}, cancerDetails: '', other: '' },
+    familyGastro: { yes: false, no: true, list: {}, cancerDetails: '', other: '' },
     physicalExam: {
         fc: '', fr: '', temp: '', pa: '', pam: '', sat02: '', weight: '', height: '', imc: '',
         systems: {
@@ -498,7 +552,7 @@ export const getDefaultInitialHistoryValues = (patientId: string): InitialHistor
             "Tacto Rectal": { normal: true, abnormal: false, description: '' }
         },
     },
-    previousStudies: { yes: false, no: false, description: '' },
+    previousStudies: { yes: false, no: true, description: '' },
     comments: '',
     treatment: { food: '', meds: '', exams: '', norms: '' },
     orders: {
@@ -508,6 +562,7 @@ export const getDefaultInitialHistoryValues = (patientId: string): InitialHistor
         images: { included: false, details: '' },
         endoscopy: { included: false, details: '' },
     },
+    medicalOrders: [],
     diagnosis: '',
     isValidated: true,
     obesityHistory: undefined,

@@ -5,7 +5,9 @@ import {
     IconCalendar,
     IconBell,
     IconLogout,
-    IconLayoutDashboard
+    IconLayoutDashboard,
+    IconHome,
+    IconMessageCircle
 } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import { cn } from "../lib/utils";
@@ -25,34 +27,42 @@ export function AssistantLayout({ children, onLogout, currentUser }: AssistantLa
 
     const links = [
         {
-            label: "Dashboard",
-            href: "#",
+            label: "Inicio",
+            href: "/app/assistant",
             icon: (
-                <IconLayoutDashboard className="h-5 w-5 shrink-0 text-black stroke-[3]" />
+                <IconHome className="h-5 w-5 shrink-0 stroke-[3]" />
             ),
             onClick: () => navigate('/app/assistant')
         },
         {
-            label: "Pacientes Online",
-            href: "#",
+            label: "Pacientes",
+            href: "/app/assistant/patients",
             icon: (
-                <IconUsers className="h-5 w-5 shrink-0 text-black stroke-[3]" />
+                <IconUsers className="h-5 w-5 shrink-0 stroke-[3]" />
             ),
             onClick: () => navigate('/app/assistant/patients')
         },
         {
             label: "Agenda",
-            href: "#",
+            href: "/app/assistant/agenda",
             icon: (
-                <IconCalendar className="h-5 w-5 shrink-0 text-black stroke-[3]" />
+                <IconCalendar className="h-5 w-5 shrink-0 stroke-[3]" />
             ),
             onClick: () => navigate('/app/assistant/agenda')
         },
         {
-            label: "Notificaciones",
-            href: "#",
+            label: "Chat",
+            href: "/app/assistant/chat",
             icon: (
-                <IconBell className="h-5 w-5 shrink-0 text-black stroke-[3]" />
+                <IconMessageCircle className="h-5 w-5 shrink-0 stroke-[3]" />
+            ),
+            onClick: () => navigate('/app/assistant/chat')
+        },
+        {
+            label: "Notificaciones",
+            href: "/app/assistant/notifications",
+            icon: (
+                <IconBell className="h-5 w-5 shrink-0 stroke-[3]" />
             ),
             onClick: () => navigate('/app/assistant/notifications')
         },
@@ -60,7 +70,7 @@ export function AssistantLayout({ children, onLogout, currentUser }: AssistantLa
             label: "Cerrar Sesión",
             href: "#",
             icon: (
-                <IconLogout className="h-5 w-5 shrink-0 text-black stroke-[3]" />
+                <IconLogout className="h-5 w-5 shrink-0 stroke-[3]" />
             ),
             onClick: onLogout
         },
@@ -69,7 +79,7 @@ export function AssistantLayout({ children, onLogout, currentUser }: AssistantLa
     return (
         <div
             className={cn(
-                "flex flex-col md:flex-row bg-gray-50 w-full flex-1 max-w-full mx-auto border border-gray-200 overflow-hidden",
+                "flex flex-col md:flex-row bg-background-light w-full flex-1 max-w-full mx-auto overflow-hidden text-slate-800",
                 "h-screen"
             )}
         >
@@ -79,7 +89,11 @@ export function AssistantLayout({ children, onLogout, currentUser }: AssistantLa
                         {open ? <Logo /> : <LogoIcon />}
                         <div className="mt-8 flex flex-col gap-2">
                             {links.map((link, idx) => (
-                                <SidebarLink key={idx} link={link} />
+                                <SidebarLink
+                                    key={idx}
+                                    link={link}
+                                    isActive={link.href !== '#' && location.pathname === link.href}
+                                />
                             ))}
                         </div>
                     </div>
@@ -100,8 +114,8 @@ export function AssistantLayout({ children, onLogout, currentUser }: AssistantLa
             </Sidebar>
             <div className="flex flex-1">
                 <div className={cn(
-                    "rounded-tl-2xl border border-gray-200 flex flex-col gap-2 flex-1 w-full h-full overflow-y-auto shadow-inner",
-                    isFullPageScreen ? "p-0 bg-transparent border-0" : "p-2 md:p-10 bg-white"
+                    "rounded-tl-2xl flex flex-col gap-2 flex-1 w-full h-full overflow-y-auto",
+                    isFullPageScreen ? "p-0" : "p-2 md:p-10"
                 )}>
                     {children}
                 </div>
@@ -114,16 +128,15 @@ export const Logo = () => {
     return (
         <a
             href="#"
-            className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
+            className="font-normal flex items-center py-1 relative z-20"
         >
-            <div className="h-5 w-6 bg-purple-600 rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0 shadow-md shadow-purple-500/20" />
-            <motion.span
+            <motion.img
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="font-bold text-gray-800 whitespace-pre text-lg tracking-tight"
-            >
-                Asistente Pro
-            </motion.span>
+                src="https://static.wixstatic.com/media/3743a7_bc65d6328e9c443e95b330a92181fbc8~mv2.png/v1/crop/x_13,y_9,w_387,h_61/fill/w_542,h_85,al_c,lg_1,q_85,enc_avif,quality_auto/logo-drmairenavalle.png"
+                alt="Dr. Milton Mairena Valle"
+                className="h-10 w-auto object-contain"
+            />
         </a>
     );
 };
@@ -132,9 +145,13 @@ export const LogoIcon = () => {
     return (
         <a
             href="#"
-            className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
+            className="font-normal flex items-center py-1 relative z-20"
         >
-            <div className="h-5 w-6 bg-purple-600 rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0 shadow-md shadow-purple-500/20" />
+            <img
+                src="https://static.wixstatic.com/media/3743a7_bc65d6328e9c443e95b330a92181fbc8~mv2.png/v1/crop/x_13,y_9,w_387,h_61/fill/w_542,h_85,al_c,lg_1,q_85,enc_avif,quality_auto/logo-drmairenavalle.png"
+                alt="Dr. Milton Mairena Valle"
+                className="h-8 w-auto object-contain"
+            />
         </a>
     );
 };

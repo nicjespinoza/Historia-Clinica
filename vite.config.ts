@@ -26,8 +26,8 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
-      // Output to the Next.js public folder root
-      outDir: 'cenlae-public/public',
+      // Output to standard dist folder for Firebase Hosting
+      outDir: 'dist',
       emptyOutDir: true,
       sourcemap: false,
       minify: 'esbuild',

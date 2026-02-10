@@ -16,7 +16,9 @@ import {
     limit,
     startAfter,
     Timestamp,
-    QueryDocumentSnapshot
+    QueryDocumentSnapshot,
+    onSnapshot,
+    Unsubscribe
 } from 'firebase/firestore';
 import { firestoreCache, PAGE_SIZES, PaginatedResult } from './cache';
 
@@ -96,6 +98,23 @@ export const api = {
             },
             5 * 60 * 1000
         );
+    },
+
+    /**
+     * Subscribe to patients updates (REAL-TIME)
+     * @param onUpdate - Callback function receiving the updated list of patients
+     * @returns Unsubscribe function
+     */
+    subscribeToPatients: (onUpdate: (patients: Patient[]) => void): Unsubscribe => {
+        const q = query(collection(db, 'patients'), orderBy('createdAt', 'desc'));
+        return onSnapshot(q, (snapshot) => {
+            const patients = snapshot.docs.map(d => docToData<Patient>(d));
+            // Update cache silently to keep it fresh
+            firestoreCache.set('patients:all_v3', patients, 5 * 60 * 1000);
+            onUpdate(patients);
+        }, (error) => {
+            console.error("Error subscribing to patients:", error);
+        });
     },
 
     /**
@@ -408,6 +427,22 @@ export const api = {
             allConsults.push(...consultsSnapshot.docs.map(doc => docToData<SubsequentConsult>(doc)));
         }
         return allConsults;
+    },
+
+    /**
+     * Subscribe to patient's consults (REAL-TIME)
+     * Listens to subcollection 'patients/{id}/consults'
+     */
+    subscribeToConsults: (patientId: string, onUpdate: (consults: SubsequentConsult[]) => void): Unsubscribe => {
+        const q = query(collection(db, 'patients', patientId, 'consults'));
+        return onSnapshot(q, (snapshot) => {
+            const consults = snapshot.docs.map(d => docToData<SubsequentConsult>(d));
+            // Update cache silently
+            firestoreCache.set(`consults:${patientId}`, consults, 5 * 60 * 1000);
+            onUpdate(consults);
+        }, (error) => {
+            console.error("Error subscribing to consults:", error);
+        });
     },
 
     createConsult: async (data: Omit<SubsequentConsult, 'id'>): Promise<SubsequentConsult> => {

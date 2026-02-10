@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { User, Lock, ArrowRight, Phone, Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { User, Lock, ArrowRight, Phone, Mail, Eye, EyeOff, ArrowLeft, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from '../../components/ui/LanguageSwitcher';
 import { api } from '../../lib/api'; //
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -9,6 +11,7 @@ import { db } from '../../lib/firebase'; //
 
 // --- LOGIN SCREEN ---
 export const PatientLoginScreen = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const { signIn } = useAuth();
     const [email, setEmail] = useState('');
@@ -55,14 +58,14 @@ export const PatientLoginScreen = () => {
                 }
             } else {
                 // Usuario existe en Auth pero no tiene ficha médica
-                setError('No se encontró un perfil de paciente asociado a esta cuenta.');
+                setError(t('auth.email_taken'));
             }
         } catch (err: any) {
             console.error(err);
             if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-                setError('Correo o contraseña incorrectos.');
+                setError(t('auth.invalid_credential_error', { defaultValue: 'Correo o contraseña incorrectos.' }));
             } else {
-                setError('Error al iniciar sesión. Intente nuevamente.');
+                setError(t('auth.login_error', { defaultValue: 'Error al iniciar sesión. Intente nuevamente.' }));
             }
         } finally {
             setIsLoading(false);
@@ -76,6 +79,10 @@ export const PatientLoginScreen = () => {
         <div className="min-h-screen flex items-center justify-center bg-[#083c79] p-4 font-sans">
             <div className="bg-white p-8 md:p-12 rounded-2xl shadow-xl w-full max-w-md border border-gray-100 relative">
 
+                <div className="absolute top-4 right-4 z-10">
+                    <LanguageSwitcher />
+                </div>
+
                 <div className="mb-8">
                     <div className="flex justify-center mb-6 pt-2">
                         <img
@@ -86,14 +93,14 @@ export const PatientLoginScreen = () => {
                     </div>
 
                     <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight text-center">
-                        Portal Paciente
+                        {t('auth.patient_portal_title')}
                     </h1>
-                    <p className="text-gray-500 mt-2 font-medium text-center">Acceda a su historial y citas</p>
+                    <p className="text-gray-500 mt-2 font-medium text-center">{t('auth.patient_portal_subtitle')}</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-semibold text-[#000000] mb-2">Correo Electrónico</label>
+                        <label className="block text-sm font-semibold text-[#000000] mb-2">{t('auth.email')}</label>
                         <div className="relative">
                             {/* ICONO MODIFICADO */}
                             <User className="absolute left-3 top-1/2 -translate-y-1/2 text-[#084286] w-5 h-5" />
@@ -109,7 +116,7 @@ export const PatientLoginScreen = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-semibold text-[#000000] mb-2">Contraseña</label>
+                        <label className="block text-sm font-semibold text-[#000000] mb-2">{t('auth.password')}</label>
                         <div className="relative">
                             {/* ICONO MODIFICADO */}
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#084286] w-5 h-5" />
@@ -134,16 +141,16 @@ export const PatientLoginScreen = () => {
                         {isLoading ? (
                             <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         ) : (
-                            <>Ingresar <ArrowRight size={20} /></>
+                            <>{t('auth.enter')} <ArrowRight size={20} /></>
                         )}
                     </button>
                 </form>
 
                 <div className="mt-8 text-center space-y-4">
                     <p className="text-gray-500 text-sm">
-                        ¿No tiene cuenta?{' '}
+                        {t('auth.dont_have_account')}{' '}
                         <button onClick={() => navigate('/app/patient/register')} className="text-blue-600 font-bold hover:underline">
-                            Regístrese aquí
+                            {t('auth.register_here')}
                         </button>
                     </p>
 
@@ -151,7 +158,7 @@ export const PatientLoginScreen = () => {
                         onClick={() => navigate('/')}
                         className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                     >
-                        <ArrowLeft size={18} /> Regresar
+                        <ArrowLeft size={18} /> {t('auth.go_back')}
                     </button>
                 </div>
             </div>
@@ -161,6 +168,7 @@ export const PatientLoginScreen = () => {
 
 // --- REGISTER SCREEN ---
 export const PatientRegisterScreen = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const { signUp } = useAuth();
 
@@ -193,7 +201,7 @@ export const PatientRegisterScreen = () => {
         if (!formData.firstName) return;
         setFieldErrors(prev => ({ ...prev, firstName: '' }));
         if (formData.firstName.length < 3) {
-            setFieldErrors(prev => ({ ...prev, firstName: 'Mínimo 3 caracteres' }));
+            setFieldErrors(prev => ({ ...prev, firstName: t('auth.min_chars') }));
         }
     };
 
@@ -202,7 +210,7 @@ export const PatientRegisterScreen = () => {
         if (!formData.lastName) return;
         setFieldErrors(prev => ({ ...prev, lastName: '' }));
         if (formData.lastName.length < 3) {
-            setFieldErrors(prev => ({ ...prev, lastName: 'Mínimo 3 caracteres' }));
+            setFieldErrors(prev => ({ ...prev, lastName: t('auth.min_chars') }));
         }
     };
 
@@ -213,7 +221,7 @@ export const PatientRegisterScreen = () => {
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
         if (!emailRegex.test(formData.email)) {
-            setFieldErrors(prev => ({ ...prev, email: 'Formato inválido (ej: abc@correo.com)' }));
+            setFieldErrors(prev => ({ ...prev, email: t('auth.invalid_email') }));
             return;
         }
 
@@ -222,7 +230,7 @@ export const PatientRegisterScreen = () => {
             if (exists) {
                 setFieldErrors(prev => ({
                     ...prev,
-                    email: 'Este correo ya está registrado. Por favor inicie sesión.'
+                    email: t('auth.email_taken')
                 }));
             }
         } catch (error) {
@@ -245,7 +253,7 @@ export const PatientRegisterScreen = () => {
         if (!phoneRegex.test(formData.phone)) {
             setFieldErrors(prev => ({
                 ...prev,
-                phone: 'Ingrese 11 dígitos: código de área + teléfono'
+                phone: t('auth.invalid_phone')
             }));
         }
     };
@@ -261,14 +269,7 @@ export const PatientRegisterScreen = () => {
         const hasSpecial = /[@&#$%*!]/.test(formData.password);
 
         if (!hasMinLength || !hasLetter || !hasNumber || !hasSpecial) {
-            let errorMsg = 'Requisitos: ';
-            const missing = [];
-            if (!hasMinLength) missing.push('mín. 8 caracteres');
-            if (!hasLetter) missing.push('una letra');
-            if (!hasNumber) missing.push('un número');
-            if (!hasSpecial) missing.push('un carácter especial (@&#$%*!)');
-            errorMsg += missing.join(', ');
-            setFieldErrors(prev => ({ ...prev, password: errorMsg }));
+            setFieldErrors(prev => ({ ...prev, password: t('auth.password_requirements') }));
         }
     };
 
@@ -280,7 +281,7 @@ export const PatientRegisterScreen = () => {
         if (formData.password !== formData.confirmPassword) {
             setFieldErrors(prev => ({
                 ...prev,
-                confirmPassword: 'Las contraseñas no coinciden'
+                confirmPassword: t('auth.passwords_dont_match')
             }));
         }
     };
@@ -380,6 +381,9 @@ export const PatientRegisterScreen = () => {
             <div className="absolute bottom-[10%] left-[-5%] w-[25%] h-[25%] bg-purple-500/10 rounded-full blur-[80px]" />
 
             <div className="w-full max-w-2xl bg-white shadow-2xl rounded-3xl overflow-hidden border border-white/10 relative z-10">
+                <div className="absolute top-4 right-4 z-10">
+                    <LanguageSwitcher />
+                </div>
                 <form onSubmit={handleSubmit} className="p-6 md:p-8">
                     {/* Header */}
                     <div className="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
@@ -389,8 +393,8 @@ export const PatientRegisterScreen = () => {
                                 alt="Logo Dr. Milton Mairena Valle"
                                 className="h-10 md:h-12 object-contain mx-auto mb-2"
                             />
-                            <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">Registro de Paciente</h2>
-                            <p className="text-xs md:text-sm text-gray-500 font-medium">Complete sus datos para crear su cuenta</p>
+                            <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">{t('auth.patient_register_title')}</h2>
+                            <p className="text-xs md:text-sm text-gray-500 font-medium">{t('auth.patient_register_subtitle')}</p>
                         </div>
                         <button
                             type="button"
@@ -406,7 +410,7 @@ export const PatientRegisterScreen = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <div className={`rounded-xl px-4 py-3 ${fieldErrors.firstName ? errorWrapperClass : wrapperClass}`}>
-                                    <label className="block text-xs text-gray-500 font-medium mb-1">Nombre</label>
+                                    <label className="block text-xs text-gray-500 font-medium mb-1">{t('auth.first_name')}</label>
                                     <div className="flex items-center gap-2">
                                         <User className={`w-5 h-5 ${fieldErrors.firstName ? 'text-red-400' : 'text-[#084286]'}`} />
                                         <input
@@ -423,7 +427,7 @@ export const PatientRegisterScreen = () => {
                             </div>
                             <div>
                                 <div className={`rounded-xl px-4 py-3 ${fieldErrors.lastName ? errorWrapperClass : wrapperClass}`}>
-                                    <label className="block text-xs text-gray-500 font-medium mb-1">Apellido</label>
+                                    <label className="block text-xs text-gray-500 font-medium mb-1">{t('auth.last_name')}</label>
                                     <div className="flex items-center gap-2">
                                         <User className={`w-5 h-5 ${fieldErrors.lastName ? 'text-red-400' : 'text-[#084286]'}`} />
                                         <input
@@ -444,7 +448,7 @@ export const PatientRegisterScreen = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <div className={`rounded-xl px-4 py-3 ${fieldErrors.email ? errorWrapperClass : wrapperClass}`}>
-                                    <label className="block text-xs text-gray-500 font-medium mb-1">Correo Electrónico</label>
+                                    <label className="block text-xs text-gray-500 font-medium mb-1">{t('auth.email')}</label>
                                     <div className="flex items-center gap-2">
                                         <Mail className={`w-5 h-5 ${fieldErrors.email ? 'text-red-400' : 'text-[#084286]'}`} />
                                         <input
@@ -462,7 +466,7 @@ export const PatientRegisterScreen = () => {
                             </div>
                             <div>
                                 <div className={`rounded-xl px-4 py-3 ${fieldErrors.phone ? errorWrapperClass : wrapperClass}`}>
-                                    <label className="block text-xs text-gray-500 font-medium mb-1">Teléfono</label>
+                                    <label className="block text-xs text-gray-500 font-medium mb-1">{t('auth.phone')}</label>
                                     <div className="flex items-center gap-2">
                                         <Phone className={`w-5 h-5 ${fieldErrors.phone ? 'text-red-400' : 'text-[#084286]'}`} />
                                         <input
@@ -484,7 +488,7 @@ export const PatientRegisterScreen = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <div className={`rounded-xl px-4 py-3 ${fieldErrors.password ? errorWrapperClass : wrapperClass}`}>
-                                    <label className="block text-xs text-gray-500 font-medium mb-1">Contraseña</label>
+                                    <label className="block text-xs text-gray-500 font-medium mb-1">{t('auth.password')}</label>
                                     <div className="flex items-center gap-2">
                                         <Lock className={`w-5 h-5 ${fieldErrors.password ? 'text-red-400' : 'text-[#084286]'}`} />
                                         <input
@@ -505,12 +509,12 @@ export const PatientRegisterScreen = () => {
                                     </div>
                                 </div>
                                 <p className={`text-xs mt-1 ml-1 ${fieldErrors.password ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
-                                    {fieldErrors.password || 'Mín. 8 caracteres, letra, número y @&#$%*!'}
+                                    {fieldErrors.password || t('auth.password_requirements')}
                                 </p>
                             </div>
                             <div>
                                 <div className={`rounded-xl px-4 py-3 ${fieldErrors.confirmPassword ? errorWrapperClass : wrapperClass}`}>
-                                    <label className="block text-xs text-gray-500 font-medium mb-1">Confirmar Contraseña</label>
+                                    <label className="block text-xs text-gray-500 font-medium mb-1">{t('auth.confirm_password')}</label>
                                     <div className="flex items-center gap-2">
                                         <Lock className={`w-5 h-5 ${fieldErrors.confirmPassword ? 'text-red-400' : 'text-[#084286]'}`} />
                                         <input
@@ -552,7 +556,7 @@ export const PatientRegisterScreen = () => {
                                 ) : (
                                     <>
                                         <User size={20} />
-                                        Registrarse
+                                        {t('auth.register')}
                                     </>
                                 )}
                             </button>
@@ -562,9 +566,9 @@ export const PatientRegisterScreen = () => {
 
                 <div className="pb-6 text-center">
                     <p className="text-gray-500 text-sm">
-                        ¿Ya tiene cuenta?{' '}
+                        {t('auth.already_have_account')}{' '}
                         <button onClick={() => navigate('/app/patient/login')} className="text-[#083c79] font-bold hover:underline">
-                            Inicie Sesión aquí
+                            {t('auth.login_here')}
                         </button>
                     </p>
                 </div>

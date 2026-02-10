@@ -26,6 +26,7 @@ export const ActionButtonSmall = ({ icon, onClick, color }: any) => {
         blue: 'hover:bg-blue-50 text-blue-600',
         amber: 'hover:bg-amber-50 text-amber-600',
         red: 'hover:bg-red-50 text-red-600',
+        emerald: 'hover:bg-emerald-50 text-emerald-600',
     };
     return (
         <button onClick={(e) => { e.stopPropagation(); onClick(); }} className={`p-1.5 rounded-lg transition-colors ${colors[color]}`}>

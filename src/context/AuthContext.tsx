@@ -65,6 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     assignedRole = 'patient';
                     console.warn('User has no role claim, defaulting to patient. Use admin panel to assign roles.');
                 }
+                console.log('[AuthContext] Final assigned role:', assignedRole);
                 setRole(assignedRole);
             } else {
                 setRole(null);

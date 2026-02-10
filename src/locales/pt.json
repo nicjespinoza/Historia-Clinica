@@ -1,0 +1,273 @@
+{
+    "nav": {
+        "home": "Início",
+        "biography": "Biografia",
+        "services": "Serviços",
+        "surgical": "Cirúrgicos",
+        "endoscopic": "Endoscópicos",
+        "contact": "Contato",
+        "patient_portal": "Portal do Paciente"
+    },
+    "auth": {
+        "login": "Entrar",
+        "register": "Registar",
+        "patient_login": "Acesso ao Paciente",
+        "patient_register": "Registo de Paciente",
+        "email": "Endereço de E-mail",
+        "password": "Palavra-passe",
+        "forgot_password": "Esqueceu a sua palabra-passe?",
+        "dont_have_account": "Não tem uma conta?",
+        "already_have_account": "Já tem una conta?",
+        "enter": "Entrar",
+        "create_account": "Criar Conta",
+        "patient_portal_title": "Portal do Paciente",
+        "patient_portal_subtitle": "Aceda ao seu histórico e consultas",
+        "register_here": "Registe-se aqui",
+        "go_back": "Voltar",
+        "patient_register_title": "Registo de Paciente",
+        "patient_register_subtitle": "Complete os seus datos para criar a sua conta",
+        "first_name": "Nome",
+        "last_name": "Apelido",
+        "phone": "Telefone",
+        "confirm_password": "Confirmar Palavra-passe",
+        "login_here": "Inicie sessão aqui",
+        "min_chars": "Mínimo 3 caracteres",
+        "invalid_email": "Formato inválido (ex: abc@email.com)",
+        "email_taken": "Este e-mail já está registado. Por favor, inicie sessão.",
+        "invalid_phone": "Introduza 11 dígitos: código de área + telefone",
+        "passwords_dont_match": "As palavras-passe não coincidem",
+        "password_requirements": "Requisitos: mín. 8 caracteres, letra, número e carácter especial (@&#$%*!)",
+        "staff": {
+            "validating": "Validando o acesso ao sistema",
+            "verifying": "Verificando segurança e localização...",
+            "secure_connection": "Ligação Segura TLS 1.3",
+            "restricted_access": "Acesso Restringido",
+            "unauthorized": "Acesso não autorizado",
+            "ip_not_authorized": "O seu endereço IP ({{ip}}) não está autorizado a aceder ao sistema.",
+            "exclusive_use": "Este portal é de uso exclusivo de pessoal autorizado nas instalações clínicas ou redes privadas aprovadas.",
+            "exit": "Sair",
+            "go_back": "Voltar",
+            "system_rights": "Sistema CENLAE. Todos os direitos reservados.",
+            "select_profile": "Selecione o seu perfil",
+            "medical_staff": "Pessoal médico",
+            "medical_subtitle": "Médicos e especialistas",
+            "administration": "Administração",
+            "admin_subtitle": "Assistentes e auxiliares",
+            "enter_portal": "Entrar no portal",
+            "assign_email_error": "Introduza o e-mail atribuído para aceder ao portal",
+            "invalid_credentials": "Credenciales incorretas ou erro de acesso."
+        }
+    },
+    "hero": {
+        "title_line1": "Clínica de Endoscopia e Laparoscopia",
+        "title_line2": "de Alta Especialidade",
+        "welcome": "Bem-vindo",
+        "video_not_supported": "O seu navegador não suporta vídeos HTML5."
+    },
+    "services": {
+        "title": "Serviços",
+        "surgical_title": "Cirúrgicos",
+        "endoscopic_title": "Endoscópicos",
+        "surgical_items": [
+            {
+                "title": "Cirurgia Geral",
+                "desc": "Técnicas cirúrgicas convencionais para el tratamento de doenças prevalentes (hérnias, patologia ano-orificial, cirurgias menores)."
+            },
+            {
+                "title": "Cirurgia Gastrointestinal",
+                "desc": "Procedimentos cirúrgicos a nível do trato digestivo através de incisões mínimas produzindo menos cicatrizes, menos dor e uma rápida recuperação."
+            },
+            {
+                "title": "Minilaparoscopia",
+                "desc": "Técnica cirúrgica em doenças gastrointestinais ou patologia herniaria utilizando instrumentos muito finos (3 mm) com cicatrizes mínimas e uma rápida recuperação."
+            }
+        ],
+        "endoscopic_items": [
+            {
+                "title": "Endoscopia Alta",
+                "desc": "Procedimento endoscópico que permite a avaliação interna do esôfago, estômago e duodeno para fins diagnósticos e de tratamento."
+            },
+            {
+                "title": "Colonoscopia",
+                "desc": "Procedimento endoscópico que avalia o interior do cólon e reto para o diagnóstico e tratamento de suas doenças."
+            },
+            {
+                "title": "Duodenoscopia",
+                "desc": "Procedimento endoscópico que permite avaliar o duodeno e a Ampolla de Vater para fins diagnósticos e terapêuticos."
+            },
+            {
+                "title": "CPRE",
+                "desc": "A Colangiopancreatografia Endoscópica Retrógrada é um procedimento endoscópico empregado no tratamento das doenças da via biliar e do ducto pancreático."
+            },
+            {
+                "title": "Ultrassom Endoscópico",
+                "desc": "Estudo endoscópico que permite realizar uma avaliação zonográfica dos órgãos intrabdominais para fins diagnósticos ou terapêuticos."
+            },
+            {
+                "title": "Colangioscopia",
+                "desc": "Procedimento endoscópico que permite o diagnóstico e tratamento das doenças da via biliar e do ducto pancreático."
+            },
+            {
+                "title": "Enteroscopia",
+                "desc": "Procedimento endoscópico que permite o tratamento de doenças benignas e malignas do intestino delgado."
+            },
+            {
+                "title": "Cápsula Endoscópica",
+                "desc": "Estudo que consiste em ingerir um dispositivo eletrónico em forma de cápsula que tira fotografias do intestino delgado ou do cólon para fins diagnósticos."
+            },
+            {
+                "title": "Balão Intragástrico",
+                "desc": "Consiste em colocar por vía endoscópica um balão preenchido com água durante 1 ano com o objetivo de promover a perda de peso no paciente obeso."
+            },
+            {
+                "title": "Assistência Nutricional",
+                "desc": "Colocação endoscópica de sondas de alimentação no estômago e intestino delgado (jejuno) com o objetivo da administração de medicamentos e alimentos."
+            }
+        ]
+    },
+    "profile": {
+        "title": "Experiência e tecnologia ao serviço da sua saúde",
+        "p1": "Com mais de uma década de experiência em endoscopia e laparoscopia avançadas, estou comprometido em oferecer diagnósticos precisos.",
+        "p2": "Cada procedimento é realizado com dedicação, priorizando sempre a sua saúde e o seu bem-estar com técnicas minimamente invasivas.",
+        "p3": "A minha missão é fornecer-lhe um serviço médico de qualidade, personalizado e de confiança.",
+        "priority": "A sua saúde é a minha prioridade!",
+        "more_info": "Mais informações",
+        "experience_title": "Experiência Profissional",
+        "education_title": "Formação Académica",
+        "see_more": "Ver mais..",
+        "see_less": "Ver menos..",
+        "experience_items": [
+            {
+                "text": "Chefe do centro de endoscopia",
+                "subtext": "Hospital Vivian Pellas."
+            },
+            {
+                "text": "Cirurgião endoscopista gastrointestinal",
+                "subtext": "Hospital Vivian Pellas."
+            },
+            {
+                "text": "Chefe de cirurgia geral e endoscopia",
+                "subtext": "Hospital SUMEDICO."
+            }
+        ],
+        "education_items": [
+            {
+                "text": "Pós-graduação em enteroscopia e cápsula",
+                "subtext": "México"
+            },
+            {
+                "text": "Alta especialidade em ultrassom endoscópico",
+                "subtext": "México"
+            },
+            {
+                "text": "Cirurgia laparoscópica e toracoscopia",
+                "subtext": "Argentina"
+            }
+        ],
+        "full": {
+            "specialties": [
+                "Cirurgia Endoscópica Gastrointestinal",
+                "Endoscopia Diagnóstica e Terapêutica Avançada",
+                "Cirurgia Laparoscópica Avançada",
+                "Ultrassom Endoscópico",
+                "Enteroscopia e Cápsula"
+            ],
+            "vision_title": "VISÃO",
+            "vision_text": "Proporcionar aos pacientes a melhor qualidade possível de cuidados médicos na área da Cirurgia Gastrointestinal e Endoscopia",
+            "mission_title": "MISSÃO",
+            "mission_text": "Oferecer soluções minimamente invasivas aos pacientes com doenças prevalentes do aparelho gastrointestinal de uma forma segura, precisa e oportuna.",
+            "stats_title": "NÚMEROS QUE MOSTRAM O MEU COMPROMISSO",
+            "years_exp": "Anos de experiência",
+            "procedimientos": "Procedimentos realizados",
+            "exp_full": [
+                {
+                    "titulo": "Chefe da Unidade de Endoscopia Gastrointestinal",
+                    "lugar": "Hospital Vivian Pellas. Nicarágua",
+                    "periodo": "(2024 - Presente)"
+                },
+                {
+                    "titulo": "Cirurgião Endoscopista e Laparoscopista Gastrointestinal",
+                    "lugar": "Hospital Vivian Pellas. Nicarágua",
+                    "periodo": "(2018 - Presente)"
+                },
+                {
+                    "titulo": "Chefe de Cirurgia Geral e Endoscopia",
+                    "lugar": "Hospital SUMEDICO. Nicarágua",
+                    "periodo": "(2011 - 2016)"
+                },
+                {
+                    "titulo": "Cirurgião Geral Assistente",
+                    "lugar": "Hospital SUMEDICO e Hospital Vivian Pellas",
+                    "periodo": "(2006 - 2009)"
+                },
+                {
+                    "titulo": "Clínico Geral",
+                    "lugar": "Hospital Regional de Juigalpa. Nicarágua",
+                    "periodo": "(2000)"
+                }
+            ],
+            "edu_full": [
+                {
+                    "titulo": "Pós-graduação em Enteroscopia e Cápsula Endoscópica",
+                    "periodo": "(México 2018)"
+                },
+                {
+                    "titulo": "Alta Especialidade em Ultrassom Endoscópico",
+                    "periodo": "(México 2017 - 2018)"
+                },
+                {
+                    "titulo": "Formação e Aperfeiçoamento em Cirurgia Laparoscópica",
+                    "periodo": "(Argentina 2016)"
+                },
+                {
+                    "titulo": "Aperfeiçoamento em Endoscopia Terapêutica Avançada",
+                    "periodo": "(Chile 2011)"
+                },
+                {
+                    "titulo": "Aperfeiçoamento em Endoscopia Gastrointestinal",
+                    "periodo": "(Chile 2010 - 2011)"
+                },
+                {
+                    "titulo": "Especialidade em Cirurgia Geral",
+                    "periodo": "(Chile 2003 - 2006)"
+                },
+                {
+                    "titulo": "Pós-graduação em Cirurgia Geral",
+                    "periodo": "(Nicarágua 2001 - 2002)"
+                },
+                {
+                    "titulo": "Doutor em Medicina Geral",
+                    "periodo": "(Nicarágua 1994 - 2000)"
+                }
+            ],
+            "asoc_title": "Associações Médicas"
+        }
+    },
+    "footer": {
+        "about": "CENLAE é um centro especializado em procedimentos minimamente invasivos, comprometido com a excelência médica e o bem-estar do paciente.",
+        "quick_links": "Links Rápidos",
+        "contact": "Contacto",
+        "profile_title": "Perfil Profissional",
+        "services_title": "Serviciços",
+        "follow_us": "Siga-nos",
+        "consultation": "Consulta",
+        "emergencias": "Emergências",
+        "hours": "8:00 am - 5:00 pm",
+        "address_detail": "Torre 1, Piso 2, Consultório 208",
+        "address": "Hospital Vivian Pellas, Torre II, Piso 5, n.º 512. Manágua, Nicarágua.",
+        "all_rights_reserved": "Todos os direitos reservados."
+    },
+    "contact": {
+        "address_title": "ENDEREÇO",
+        "phone_title": "CONTACTO",
+        "hours_title": "HORÁRIO DE ATENDIMENTO",
+        "form_title": "Mais informações:",
+        "full_name": "Nome completo",
+        "message": "Mensagem",
+        "send": "Enviar",
+        "view_location": "Ver Localização",
+        "navigate_with": "Navegar com",
+        "mon_fri": "Segunda a Sexta",
+        "whatsapp_template": "Olá, eu sou {{name}}. {{message}}"
+    }
+}

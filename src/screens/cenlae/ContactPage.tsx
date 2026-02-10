@@ -1,45 +1,46 @@
 import React, { useEffect, useState } from 'react';
 import { NavbarCenlae } from './NavbarCenlae';
 import { FooterCenlae } from './FooterCenlae';
+import { useTranslation } from 'react-i18next';
+import { MapPin, Navigation, Facebook, Instagram, Linkedin } from 'lucide-react';
 
 const ContactForm = () => {
+    const { t } = useTranslation();
     const [name, setName] = useState('');
     const [message, setMessage] = useState('');
     const isFormValid = name.trim() !== '' && message.trim() !== '';
 
     const handleWhatsAppClick = () => {
         if (!isFormValid) return;
-        const text = `Hola, soy ${name}. ${message}`;
+        const text = t('contact.whatsapp_template', { name, message });
         window.open(`https://wa.me/50587893709?text=${encodeURIComponent(text)}`, '_blank');
     };
 
     return (
         <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
             <div>
-                <label htmlFor="name" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Nombre Completo *
+                <label htmlFor="name" className="block text-base font-bold text-gray-800 mb-2">
+                    {t('contact.full_name')}: <span className="text-red-500">*</span>
                 </label>
                 <input
                     type="text"
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Ingrese su nombre completo"
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white focus:border-[#0F4C81] outline-none transition-all"
+                    className="w-full px-4 py-4 rounded-xl border-none bg-[#083c79] text-white placeholder-blue-300/50 focus:ring-2 focus:ring-blue-400 outline-none transition-all shadow-inner"
                     required
                 />
             </div>
             <div>
-                <label htmlFor="message" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Mensaje *
+                <label htmlFor="message" className="block text-base font-bold text-gray-800 mb-2">
+                    {t('contact.message')}: <span className="text-red-500">*</span>
                 </label>
                 <textarea
                     id="message"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Escriba su mensaje aquí..."
                     rows={5}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white focus:border-[#0F4C81] outline-none transition-all resize-none"
+                    className="w-full px-4 py-4 rounded-xl border-none bg-[#083c79] text-white placeholder-blue-300/50 focus:ring-2 focus:ring-blue-400 outline-none transition-all resize-none shadow-inner"
                     required
                 />
             </div>
@@ -47,19 +48,20 @@ const ContactForm = () => {
                 type="button"
                 onClick={handleWhatsAppClick}
                 disabled={!isFormValid}
-                className={`w-full py-4 px-6 rounded-full font-bold text-lg flex items-center justify-center space-x-3 shadow-lg transition-all ${isFormValid
-                    ? 'bg-green-500 hover:bg-green-600 text-white transform hover:scale-105'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                className={`py-3 px-8 rounded-full font-bold text-lg flex items-center gap-3 shadow-md transition-all ${isFormValid
+                    ? 'bg-gray-300 hover:bg-green-500 hover:text-white text-gray-600 transform hover:scale-105'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     }`}
             >
-                <span className="material-icons">chat</span>
-                <span>Enviar por WhatsApp</span>
+                <span>{t('contact.send')}</span>
+                <span className="material-icons text-xl">chat</span>
             </button>
         </form>
     );
 };
 
 export const ContactPage = () => {
+    const { t } = useTranslation();
     useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
@@ -75,7 +77,7 @@ export const ContactPage = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-4 text-center md:text-left">
                     <div className="flex flex-col items-center md:items-start space-y-3 px-4">
-                        <h2 className="text-cenlae-primary font-display font-bold text-xl md:text-2xl uppercase tracking-wide mb-2">DIRECCIÓN</h2>
+                        <h2 className="text-cenlae-primary font-display font-bold text-xl md:text-2xl uppercase tracking-wide mb-2">{t('contact.address_title')}</h2>
                         <div className="text-black text-base space-y-1 font-semibold leading-relaxed">
                             <p>Carretera Masaya</p>
                             <p>Km. 9.8, 250 mts al oeste</p>
@@ -83,29 +85,47 @@ export const ContactPage = () => {
                             <p className="mt-2 font-bold text-lg">Hospital Vivian Pellas</p>
                             <p>Torre 1, Segundo Piso, Consultorio 208</p>
                         </div>
-                    </div>
 
-                    <div className="flex flex-col items-center md:items-start space-y-3 px-4 border-t pt-8 md:pt-0 md:border-t-0 md:border-l border-gray-200 md:pl-12">
-                        <h2 className="text-cenlae-primary font-display font-bold text-xl md:text-2xl uppercase tracking-wide mb-2">CONTACTO</h2>
-                        <div className="text-black text-base space-y-2 leading-relaxed">
-                            <p><span className="font-bold">Consultas:</span> <a className="hover:text-cenlae-primary transition-colors" href="tel:+50587893709">(+505) 8789 3709</a></p>
-                            <p><a className="hover:text-cenlae-primary transition-colors" href="tel:+50522556900">(+505) 2255 6900 Ext. 4208</a></p>
-                            <p><span className="font-bold">Emergencias:</span> <a className="hover:text-cenlae-primary transition-colors" href="tel:+50585500592">(+505) 8550 0592</a></p>
+                        {/* Social Media Icons */}
+                        <div className="flex items-center gap-3 mt-6">
+                            <a href="https://www.facebook.com/Dr.MiltonMairena" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform">
+                                <Facebook size={20} fill="currentColor" />
+                            </a>
+                            <a href="https://www.instagram.com/drmiltonmairena" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform">
+                                <Instagram size={20} />
+                            </a>
+                            <a href="https://x.com/drmiltonmairena" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                </svg>
+                            </a>
+                            <a href="https://www.linkedin.com/in/dr-milton-mairena-valle-a1a294101" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform">
+                                <Linkedin size={20} fill="currentColor" />
+                            </a>
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-center md:items-end space-y-3 px-4 border-t pt-8 md:pt-0 md:border-t-0 md:border-l border-gray-200">
-                        <h2 className="text-cenlae-primary font-display font-bold text-xl md:text-2xl uppercase tracking-wide mb-2 text-center md:text-right w-full">HORARIO DE ATENCIÓN</h2>
+                    <div className="flex flex-col items-center md:items-start space-y-3 px-4 md:pl-12">
+                        <h2 className="text-cenlae-primary font-display font-bold text-xl md:text-2xl uppercase tracking-wide mb-2">{t('contact.phone_title')}</h2>
+                        <div className="text-black text-base space-y-2 leading-relaxed">
+                            <p><span className="font-bold">{t('footer.consultation')}:</span> <a className="hover:text-cenlae-primary transition-colors" href="tel:+50587893709">(+505) 8789 3709</a></p>
+                            <p><a className="hover:text-cenlae-primary transition-colors" href="tel:+50522556900">(+505) 2255 6900 Ext. 4208</a></p>
+                            <p><span className="font-bold">{t('footer.emergencies')}:</span> <a className="hover:text-cenlae-primary transition-colors" href="tel:+50585500592">(+505) 8550 0592</a></p>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col items-center md:items-end space-y-3 px-4">
+                        <h2 className="text-cenlae-primary font-display font-bold text-xl md:text-2xl uppercase tracking-wide mb-2 text-center md:text-right w-full">{t('contact.hours_title')}</h2>
                         <div className="text-black text-base space-y-1 font-semibold leading-relaxed text-center md:text-right w-full">
-                            <p>Lunes a Viernes</p>
-                            <p className="text-lg">08:00 AM - 05:00 PM</p>
+                            <p>{t('contact.mon_fri')}</p>
+                            <p className="text-lg">{t('footer.hours')}</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Map Section */}
-                <div className="mt-12 w-full">
-                    <div className="w-full h-[400px] md:h-[600px] rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-gray-700">
+                <div className="mt-12 w-full relative group">
+                    <div className="w-full h-[400px] md:h-[600px] rounded-2xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 relative z-0">
                         <iframe
                             src="https://maps.google.com/maps?q=12.08611537797879,-86.23393562820002+(Dr.+Milton+Mairena)&z=17&output=embed"
                             width="100%"
@@ -115,34 +135,51 @@ export const ContactPage = () => {
                             loading="lazy"
                             referrerPolicy="no-referrer-when-downgrade"
                             title="Ubicación Dr. Milton Mairena"
+                            className="grayscale-[0%] hover:grayscale-0 transition-all duration-700"
                         ></iframe>
+
+                        {/* Overlay Gradient for better text readability if needed, but keeping clean for map */}
+                        <div className="absolute inset-0 pointer-events-none shadow-inner rounded-2xl"></div>
                     </div>
-                    <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+
+                    {/* Floating Navigation Buttons */}
+                    <div className="absolute bottom-6 right-6 flex flex-col sm:flex-row gap-3 z-10">
                         <a
                             href="https://www.google.com/maps/search/?api=1&query=12.08611537797879,-86.23393562820002"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform transform hover:scale-105 flex items-center justify-center space-x-2"
+                            className="group flex items-center gap-3 bg-white/90 backdrop-blur-md border border-white/50 px-6 py-3 rounded-xl shadow-lg hover:shadow-xl hover:bg-white transition-all duration-300 transform hover:-translate-y-1"
                         >
-                            <span className="material-icons">map</span>
-                            <span>Abrir en Google Maps</span>
+                            <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors">
+                                <MapPin size={20} />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">{t('contact.view_location')}</span>
+                                <span className="text-sm font-bold text-gray-900 group-hover:text-red-700 transition-colors">Google Maps</span>
+                            </div>
                         </a>
+
                         <a
                             href="https://waze.com/ul?ll=12.08611537797879,-86.23393562820002&navigate=yes"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-[#33ccff] hover:bg-[#00aadd] text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform transform hover:scale-105 flex items-center justify-center space-x-2"
+                            className="group flex items-center gap-3 bg-[#083c79]/90 backdrop-blur-md border border-[#083c79]/50 px-6 py-3 rounded-xl shadow-lg hover:shadow-xl hover:bg-[#083c79] transition-all duration-300 transform hover:-translate-y-1"
                         >
-                            <span className="material-icons">navigation</span>
-                            <span>Ir con Waze</span>
+                            <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white group-hover:bg-white group-hover:text-[#083c79] transition-colors">
+                                <Navigation size={20} />
+                            </div>
+                            <div className="flex flex-col text-white">
+                                <span className="text-xs text-blue-200 font-medium uppercase tracking-wider">{t('contact.navigate_with')}</span>
+                                <span className="text-sm font-bold">Waze</span>
+                            </div>
                         </a>
                     </div>
                 </div>
 
                 {/* Contact Form Section - Below Map */}
-                <div className="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-2xl border border-gray-100 dark:border-slate-700">
-                        <h2 className="text-[#0F4C81] dark:text-blue-400 font-display font-bold text-2xl md:text-3xl uppercase tracking-wide mb-6 text-center">Escríbenos</h2>
+                <div className="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-xl">
+                        <h2 className="text-[#083c79] font-display font-bold text-3xl tracking-tight mb-8">{t('contact.form_title')}</h2>
                         <ContactForm />
                     </div>
                     <div className="hidden lg:block">

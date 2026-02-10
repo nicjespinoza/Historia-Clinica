@@ -38,6 +38,11 @@ export interface Patient {
     imc: string;
   };
   profileImage?: string;
+  // Motivos estructurados (Sincronización Registro -> Historia)
+  motives?: CheckboxData;
+  motivesCancerDetails?: string;
+  motivesOther?: string;
+  obesityHistory?: ObesityHistory;
 }
 
 // Helper to store dynamic checkbox data
@@ -246,10 +251,10 @@ export interface SubsequentConsult {
 
 export interface Appointment {
   id: string;
-  patientId: string;
+  patientId?: string; // Optional for blocked slots
   date: string;
   time: string;
-  type: 'presencial' | 'virtual';
+  type: 'presencial' | 'virtual' | 'cirugia' | 'bloqueo';
   reason: string;
   confirmed?: boolean;
   uniqueId?: string; // e.g., "CITA-123"

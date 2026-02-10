@@ -9,7 +9,8 @@ import {
     IconCalendar,
     IconReportAnalytics,
     IconLogout,
-    IconHome
+    IconHome,
+    IconMessageCircle
 } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import { cn } from "../lib/utils";
@@ -51,6 +52,15 @@ export function DoctorLayout({ children, onLogout, currentUser }: DoctorLayoutPr
                 <IconCalendar className="h-5 w-5 shrink-0 stroke-[3]" />
             ),
             onClick: () => navigate('/app/agenda')
+        },
+
+        {
+            label: "Chat",
+            href: "/app/chat",
+            icon: (
+                <IconMessageCircle className="h-5 w-5 shrink-0 stroke-[3]" />
+            ),
+            onClick: () => navigate('/app/chat')
         },
         {
             label: "Reportes",

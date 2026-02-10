@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar as CalendarIcon, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, X, Trash2, Edit2, Plus, Users, Video, MapPin, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar as CalendarIcon, Clock, CheckCircle, ChevronLeft, ChevronRight, X, Trash2, Edit2, Plus, Users, Video, MapPin, AlertTriangle, Eye } from 'lucide-react';
 import { api } from '../../lib/api';
 import { Patient, Appointment } from '../../types';
 import { GlassCard } from '../../components/premium-ui/GlassCard';
 import { FloatingLabelInput } from '../../components/premium-ui/FloatingLabelInput';
 import { FloatingLabelSelect } from '../../components/premium-ui/FloatingLabelSelect';
+import { Autocomplete } from '../../components/premium-ui/Autocomplete';
+import { WeeklyCalendar } from './WeeklyCalendar';
 
 // Available time slots for appointments (60 min intervals)
 // Each appointment blocks 60 minutes of doctor's time
@@ -22,38 +25,66 @@ interface AgendaScreenProps {
 }
 
 export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps) => {
+    const navigate = useNavigate();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [localPatients, setLocalPatients] = useState<Patient[]>([]);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
+    const [view, setView] = useState<'month' | 'week'>('month');
 
     // Merge prop patients with fetched patients
     const patients = propPatients.length > 0 ? propPatients : localPatients;
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
+    // Data Fetching Logic
+    const fetchAppointmentsForMonth = async (date: Date) => {
         try {
-            // Load appointments
-            const apps = await api.getAppointments();
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+
+            // Calculate start and end of month formatted as YYYY-MM-DD
+            const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+            console.log(`Fetching appointments from ${startDate} to ${endDate}`);
+
+            const apps = await api.getAppointmentsByDateRange(startDate, endDate);
+
             const mappedApps = apps.map((a, i) => ({
                 ...a,
-                confirmed: a.confirmed ?? (i % 2 === 0),
+                confirmed: a.confirmed ?? (i % 2 === 0), // Fallback logic preserved, though ideally should come from DB
                 uniqueId: a.uniqueId || `CITA-${1000 + i}`
             }));
-            setAppointments(mappedApps);
 
-            // Load patients if not provided via props
-            if (propPatients.length === 0) {
-                const fetchedPatients = await api.getPatients();
-                setLocalPatients(fetchedPatients);
-            }
+            setAppointments(mappedApps);
         } catch (error) {
             console.error("Error loading agenda data:", error);
         }
     };
+
+    // Initial Load & Patient Data
+    useEffect(() => {
+        const loadPatients = async () => {
+            if (propPatients.length === 0) {
+                try {
+                    const fetchedPatients = await api.getPatients();
+                    setLocalPatients(fetchedPatients);
+                } catch (error) {
+                    console.error("Error loading patients:", error);
+                }
+            }
+        };
+
+        loadPatients();
+        // Initial fetch for current date
+        fetchAppointmentsForMonth(currentDate);
+    }, []); // Run once on mount
+
+    // Fetch when currentDate (month) changes
+    // We use a ref or separate effect to avoid infinite loops if we were changing state inside
+    useEffect(() => {
+        fetchAppointmentsForMonth(currentDate);
+    }, [currentDate]); // Re-fetch when month changes
 
     // Calendar Logic
     const getDaysInMonth = (date: Date) => {
@@ -71,6 +102,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
         const newDate = new Date(currentDate);
         newDate.setMonth(newDate.getMonth() + delta);
         setCurrentDate(newDate);
+        // Note: fetchAppointmentsForMonth is triggered by the useEffect on currentDate
     };
 
     const isToday = (day: number) => {
@@ -126,7 +158,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
         patientId: '',
         date: '',
         time: '',
-        type: 'presencial' as 'presencial' | 'virtual',
+        type: 'presencial' as 'presencial' | 'virtual' | 'cirugia' | 'bloqueo',
         reason: ''
     });
     const [conflictWarning, setConflictWarning] = useState<string | null>(null);
@@ -163,21 +195,28 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
 
     // Handle new appointment creation
     const handleCreateAppointment = async () => {
-        if (!newAppointment.patientId || !newAppointment.date || !newAppointment.time || !newAppointment.reason) {
+        // Validate required fields based on type
+        if (!newAppointment.date || !newAppointment.time || !newAppointment.reason) {
             alert('Por favor complete todos los campos');
+            return;
+        }
+
+        // Patient ID is required only for non-blocked appointments
+        if (newAppointment.type !== 'bloqueo' && !newAppointment.patientId) {
+            alert('Por favor seleccione un paciente');
             return;
         }
 
         // Check for conflicts
         if (checkTimeConflict(newAppointment.date, newAppointment.time)) {
-            setConflictWarning('Ya existe una cita programada para esta fecha y hora');
+            setConflictWarning('Ya existe una cita o bloqueo para esta fecha y hora');
             return;
         }
 
         setIsSaving(true);
         try {
             const created = await api.createAppointment({
-                patientId: newAppointment.patientId,
+                patientId: newAppointment.patientId || 'BLOQUEO', // Fallback for blocked slots
                 date: newAppointment.date,
                 time: newAppointment.time,
                 type: newAppointment.type,
@@ -187,7 +226,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
             setShowNewAppointmentModal(false);
             setNewAppointment({ patientId: '', date: '', time: '', type: 'presencial', reason: '' });
             setConflictWarning(null);
-            alert('Cita creada exitosamente');
+            alert(newAppointment.type === 'bloqueo' ? 'Horario bloqueado exitosamente' : 'Cita creada exitosamente');
         } catch (error) {
             console.error('Error creating appointment:', error);
             alert('Error al crear la cita');
@@ -299,6 +338,44 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
         setSelectedDayAppointments(sorted);
     };
 
+    // Appointment Styles Helper
+    const getAppointmentStyles = (type: 'presencial' | 'virtual' | 'cirugia' | 'bloqueo') => {
+        if (type === 'virtual') {
+            return {
+                bg: 'bg-purple-50',
+                text: 'text-purple-700',
+                border: 'border-purple-200',
+                dot: 'bg-purple-500',
+                lightBg: 'bg-purple-500/10'
+            };
+        }
+        if (type === 'bloqueo') {
+            return {
+                bg: 'bg-gray-100',
+                text: 'text-gray-500',
+                border: 'border-gray-200',
+                dot: 'bg-gray-400',
+                lightBg: 'bg-gray-200'
+            };
+        }
+        if (type === 'cirugia') {
+            return {
+                bg: 'bg-red-50',
+                text: 'text-red-700',
+                border: 'border-red-200',
+                dot: 'bg-red-500',
+                lightBg: 'bg-red-500/10'
+            };
+        }
+        return {
+            bg: 'bg-blue-50',
+            text: 'text-blue-700',
+            border: 'border-blue-200',
+            dot: 'bg-blue-500',
+            lightBg: 'bg-[#083c79]/10'
+        };
+    };
+
     return (
         <div className="min-h-screen font-sans bg-gradient-to-br from-[#083c79] via-[#0a4d8c] to-[#062d5a]">
             {/* Decorative background elements */}
@@ -372,9 +449,9 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                 </div>
 
                 {/* Main Content: Calendar + Day Details */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="flex flex-col gap-8">
                     {/* Calendar */}
-                    <div className="lg:col-span-2">
+                    <div className="w-full">
                         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
                             {/* Calendar Header */}
                             <div className="p-6 flex justify-between items-center bg-gradient-to-r from-[#083c79] via-[#0a4d8c] to-[#0a5199] text-white">
@@ -385,6 +462,21 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                                     <p className="text-blue-200/70 text-sm">{currentDate.getFullYear()}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
+                                    {/* View Toggle */}
+                                    <div className="flex bg-white/20 rounded-xl p-1 mr-4">
+                                        <button
+                                            onClick={() => setView('month')}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'month' ? 'bg-white text-[#083c79]' : 'text-white hover:bg-white/10'}`}
+                                        >
+                                            Mes
+                                        </button>
+                                        <button
+                                            onClick={() => setView('week')}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${view === 'week' ? 'bg-white text-[#083c79]' : 'text-white hover:bg-white/10'}`}
+                                        >
+                                            Semana
+                                        </button>
+                                    </div>
                                     <button onClick={() => changeMonth(-1)} className="p-2.5 hover:bg-white/20 rounded-xl transition-all hover:scale-110 active:scale-95">
                                         <ChevronLeft size={22} />
                                     </button>
@@ -403,72 +495,104 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                                 </div>
                             </div>
 
-                            {/* Day Names */}
-                            <div className="grid grid-cols-7 bg-gradient-to-b from-gray-50 to-white border-b border-gray-200">
-                                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((d, i) => (
-                                    <div key={d} className={`py-4 text-center text-xs font-bold uppercase tracking-widest ${i === 0 || i === 6 ? 'text-blue-400' : 'text-gray-500'}`}>
-                                        {d}
+                            {view === 'week' ? (
+                                <WeeklyCalendar
+                                    currentDate={currentDate}
+                                    appointments={appointments}
+                                    patients={patients}
+                                    onDateChange={setCurrentDate}
+                                    onAppointmentClick={(apt) => {
+                                        setEditingAppointment(apt);
+                                    }}
+                                    onSlotClick={(date, time) => {
+                                        const dateStr = date.toISOString().split('T')[0];
+                                        setNewAppointment(prev => ({ ...prev, date: dateStr, time }));
+                                        setShowNewAppointmentModal(true);
+                                    }}
+                                />
+                            ) : (
+                                <>
+                                    {/* Day Names */}
+                                    <div className="grid grid-cols-7 bg-gradient-to-b from-gray-50 to-white border-b border-gray-200">
+                                        {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((d, i) => (
+                                            <div key={d} className={`py-4 text-center text-xs font-bold uppercase tracking-widest ${i === 0 || i === 6 ? 'text-blue-400' : 'text-gray-500'}`}>
+                                                {d}
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
 
-                            {/* Calendar Grid */}
-                            <div className="grid grid-cols-7">
-                                {Array.from({ length: firstDay }).map((_, i) => (
-                                    <div key={`empty-${i}`} className="min-h-[100px] border-b border-r border-gray-100 bg-gray-50/50" />
-                                ))}
-                                {Array.from({ length: days }).map((_, i) => {
-                                    const day = i + 1;
-                                    const dayApts = getAppointmentsForDay(day);
-                                    const isCurrentDay = isToday(day);
-                                    const isSelected = selectedDay === day;
+                                    {/* Calendar Grid - Responsive Scrollable Container for Mobile */}
+                                    <div className="overflow-x-auto">
+                                        <div className="grid grid-cols-7 min-w-[600px] md:min-w-0">
+                                            {Array.from({ length: firstDay }).map((_, i) => (
+                                                <div key={`empty-${i}`} className="min-h-[80px] md:min-h-[100px] border-b border-r border-gray-100 bg-gray-50/50" />
+                                            ))}
+                                            {Array.from({ length: days }).map((_, i) => {
+                                                const day = i + 1;
+                                                const dayApts = getAppointmentsForDay(day);
+                                                const isCurrentDay = isToday(day);
+                                                const isSelected = selectedDay === day;
 
-                                    return (
-                                        <div
-                                            key={day}
-                                            onClick={() => setSelectedDay(day)}
-                                            className={`min-h-[100px] p-2 border-b border-r border-gray-100 cursor-pointer transition-all relative
-                                                ${isSelected ? 'bg-blue-50 ring-2 ring-[#083c79] ring-inset' : 'hover:bg-gray-50'}
-                                                ${isCurrentDay && !isSelected ? 'bg-green-50' : ''}
-                                            `}
-                                        >
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full transition-colors
-                                                    ${isCurrentDay ? 'bg-green-500 text-white' : ''}
-                                                    ${isSelected && !isCurrentDay ? 'bg-[#083c79] text-white' : ''}
-                                                    ${!isCurrentDay && !isSelected ? 'text-gray-700' : ''}
-                                                `}>
-                                                    {day}
-                                                </span>
-                                                {dayApts.length > 0 && (
-                                                    <span className="bg-[#083c79] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                        {dayApts.length}
-                                                    </span>
-                                                )}
-                                            </div>
+                                                return (
+                                                    <div
+                                                        key={day}
+                                                        onClick={() => setSelectedDay(day)}
+                                                        className={`min-h-[80px] md:min-h-[100px] p-1 md:p-2 border-b border-r border-gray-100 cursor-pointer transition-all relative
+                                                            ${isSelected ? 'bg-blue-50 ring-2 ring-[#083c79] ring-inset' : 'hover:bg-gray-50'}
+                                                            ${isCurrentDay && !isSelected ? 'bg-green-50' : ''}
+                                                        `}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-1 md:mb-2">
+                                                            <span className={`text-xs md:text-sm font-bold w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-full transition-colors
+                                                                ${isCurrentDay ? 'bg-green-500 text-white' : ''}
+                                                                ${isSelected && !isCurrentDay ? 'bg-[#083c79] text-white' : ''}
+                                                                ${!isCurrentDay && !isSelected ? 'text-gray-700' : ''}
+                                                            `}>
+                                                                {day}
+                                                            </span>
+                                                            {dayApts.length > 0 && (
+                                                                <span className="bg-[#083c79] text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                                                    {dayApts.length}
+                                                                </span>
+                                                            )}
+                                                        </div>
 
-                                            {/* Mini appointment preview */}
-                                            <div className="space-y-1">
-                                                {dayApts.slice(0, 2).map(apt => (
-                                                    <div key={apt.id} className="text-[10px] p-1 rounded bg-[#083c79]/10 text-[#083c79] font-medium truncate">
-                                                        {apt.time}
+                                                        {/* Mini appointment preview - Hidden on very small screens, shown on md+ */}
+                                                        <div className="space-y-0.5 md:space-y-1 hidden sm:block">
+                                                            {dayApts.slice(0, 2).map(apt => {
+                                                                const styles = getAppointmentStyles(apt.type);
+                                                                return (
+                                                                    <div key={apt.id} className={`text-[9px] md:text-[10px] p-0.5 md:p-1 rounded ${styles.lightBg} ${styles.text} font-medium truncate flex items-center gap-1`}>
+                                                                        <div className={`w-1.5 h-1.5 rounded-full ${styles.dot} shrink-0`} />
+                                                                        {apt.time}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            {dayApts.length > 2 && (
+                                                                <div className="text-[9px] md:text-[10px] text-gray-500 font-medium pl-1">
+                                                                    +{dayApts.length - 2}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Dot indicator for mobile */}
+                                                        <div className="flex gap-0.5 justify-center sm:hidden mt-1">
+                                                            {dayApts.slice(0, 3).map((apt, idx) => (
+                                                                <div key={idx} className={`w-1 h-1 rounded-full ${getAppointmentStyles(apt.type).dot}`}></div>
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                ))}
-                                                {dayApts.length > 2 && (
-                                                    <div className="text-[10px] text-gray-500 font-medium">
-                                                        +{dayApts.length - 2} más
-                                                    </div>
-                                                )}
-                                            </div>
+                                                );
+                                            })}
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
 
                     {/* Selected Day Appointments Panel */}
-                    <div className="lg:col-span-1">
+                    <div className="w-full">
                         <div className="bg-white rounded-2xl shadow-xl overflow-hidden h-full">
                             {/* Panel Header */}
                             <div className="p-5 bg-gradient-to-r from-[#083c79] to-[#0a5199] text-white">
@@ -489,38 +613,58 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                                     <div className="space-y-3">
                                         {selectedDayAppointmentsList.map(apt => {
                                             const patient = patients.find(p => p.id === apt.patientId);
+                                            const styles = getAppointmentStyles(apt.type);
                                             return (
-                                                <div key={apt.id} className="p-4 rounded-xl border-2 border-gray-100 hover:border-[#083c79] hover:shadow-md transition-all group bg-white">
+                                                <div key={apt.id} className={`p-4 rounded-xl border-l-4 ${apt.confirmed ? 'border-l-green-500' : 'border-l-yellow-400'} ${styles.bg} hover:shadow-md transition-all group`}>
                                                     <div className="flex items-start gap-3">
                                                         {/* Avatar */}
-                                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#083c79] to-[#0a5199] flex items-center justify-center text-white font-bold text-lg shrink-0">
-                                                            {patient ? patient.firstName.charAt(0) : '?'}
+                                                        <div className={`w-12 h-12 rounded-full ${styles.dot} flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-sm`}>
+                                                            {(apt.type === 'bloqueo' || apt.type === 'cirugia')
+                                                                ? (apt.type === 'bloqueo' ? <Clock size={20} /> : <AlertTriangle size={20} />)
+                                                                : (patient ? patient.firstName.charAt(0) : '?')
+                                                            }
                                                         </div>
 
                                                         {/* Info */}
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center gap-2 mb-1">
-                                                                <span className="font-mono bg-[#083c79] text-white text-xs px-2 py-1 rounded font-bold">
+                                                                <span className={`font-mono ${styles.lightBg} ${styles.text} text-xs px-2 py-1 rounded font-bold`}>
                                                                     {apt.time}
                                                                 </span>
-                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${apt.confirmed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                                    {apt.confirmed ? '✓ Confirmada' : '⏳ Pendiente'}
-                                                                </span>
+                                                                {apt.type !== 'bloqueo' && apt.type !== 'cirugia' && (
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${apt.confirmed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                                        {apt.confirmed ? '✓ Confirmada' : '⏳ Pendiente'}
+                                                                    </span>
+                                                                )}
                                                             </div>
-                                                            <h4 className="font-bold text-gray-900 truncate">
-                                                                {patient ? `${patient.firstName} ${patient.lastName}` : 'Paciente Desconocido'}
+                                                            <h4 className={`font-bold ${styles.text} truncate`}>
+                                                                {(apt.type === 'bloqueo' || apt.type === 'cirugia')
+                                                                    ? (apt.type === 'bloqueo' ? 'HORARIO BLOQUEADO' : 'CIRUGÍA PROGRAMADA')
+                                                                    : (patient ? `${patient.firstName} ${patient.lastName}` : 'Paciente Desconocido')
+                                                                }
                                                             </h4>
                                                             <p className="text-sm text-gray-500 truncate mt-0.5">{apt.reason || 'Sin motivo especificado'}</p>
 
                                                             {/* Type indicator */}
                                                             <div className="flex items-center gap-1 mt-2 text-xs">
-                                                                {apt.type === 'virtual' ? (
-                                                                    <span className="flex items-center gap-1 text-purple-600 bg-purple-50 px-2 py-1 rounded-lg font-medium">
-                                                                        <Video size={12} /> Virtual
+                                                                {apt.type === 'virtual' && (
+                                                                    <span className="flex items-center gap-1 text-purple-600 font-medium">
+                                                                        <Video size={12} /> Cita Virtual
                                                                     </span>
-                                                                ) : (
-                                                                    <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-lg font-medium">
-                                                                        <MapPin size={12} /> Presencial
+                                                                )}
+                                                                {apt.type === 'presencial' && (
+                                                                    <span className="flex items-center gap-1 text-blue-600 font-medium">
+                                                                        <MapPin size={12} /> Cita Presencial
+                                                                    </span>
+                                                                )}
+                                                                {apt.type === 'bloqueo' && (
+                                                                    <span className="flex items-center gap-1 text-gray-500 font-medium">
+                                                                        <Clock size={12} /> No Disponible
+                                                                    </span>
+                                                                )}
+                                                                {apt.type === 'cirugia' && (
+                                                                    <span className="flex items-center gap-1 text-red-600 font-medium">
+                                                                        <AlertTriangle size={12} /> Quirófano
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -547,6 +691,15 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                                                                 </button>
                                                             )}
                                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                {apt.patientId && apt.type !== 'bloqueo' && apt.type !== 'cirugia' && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); navigate(`/app/profile/${apt.patientId}`); }}
+                                                                        className="p-1.5 text-[#083c79] hover:bg-blue-50 rounded-lg"
+                                                                        title="Ver Perfil"
+                                                                    >
+                                                                        <Eye size={14} />
+                                                                    </button>
+                                                                )}
                                                                 <button onClick={(e) => handleEditAppointment(apt.id, e)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg" title="Editar">
                                                                     <Edit2 size={14} />
                                                                 </button>
@@ -594,12 +747,18 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                                 const patient = patients.find(p => p.id === apt.patientId);
                                 return (
                                     <div key={apt.id} className="flex items-center p-3 bg-white rounded-xl border border-gray-200 shadow-sm hover:border-[#083c79] transition-colors group">
-                                        <div className="h-10 w-10 rounded-full bg-[#083c79] flex items-center justify-center text-white font-bold mr-3 shrink-0 text-sm">
-                                            {patient ? patient.firstName.charAt(0) : '?'}
+                                        <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold mr-3 shrink-0 text-sm ${(apt.type === 'bloqueo' || apt.type === 'cirugia') ? (apt.type === 'cirugia' ? 'bg-red-500' : 'bg-gray-400') : 'bg-[#083c79]'}`}>
+                                            {(apt.type === 'bloqueo' || apt.type === 'cirugia')
+                                                ? (apt.type === 'bloqueo' ? <Clock size={16} /> : <AlertTriangle size={16} />)
+                                                : (patient ? patient.firstName.charAt(0) : '?')
+                                            }
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h4 className="font-bold text-gray-900 truncate text-sm">
-                                                {patient ? `${patient.firstName} ${patient.lastName}` : 'Desconocido'}
+                                                {(apt.type === 'bloqueo' || apt.type === 'cirugia')
+                                                    ? (apt.type === 'bloqueo' ? 'BLOQUEADO' : 'CIRUGÍA')
+                                                    : (patient ? `${patient.firstName} ${patient.lastName}` : 'Desconocido')
+                                                }
                                             </h4>
                                             <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
                                                 <span className="font-mono bg-[#083c79]/5 text-[#083c79] px-1.5 py-0.5 rounded font-bold">{apt.time}</span>
@@ -607,6 +766,15 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
+                                            {apt.patientId && apt.type !== 'bloqueo' && apt.type !== 'cirugia' && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); navigate(`/app/profile/${apt.patientId}`); }}
+                                                    className="p-1.5 text-[#083c79] hover:bg-blue-50 rounded-full transition-colors"
+                                                    title="Ver Perfil"
+                                                >
+                                                    <Eye size={16} />
+                                                </button>
+                                            )}
                                             <button onClick={(e) => handleEditAppointment(apt.id, e)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"><Edit2 size={16} /></button>
                                             <button onClick={(e) => handleDeleteAppointment(apt.id, e)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-full transition-colors"><Trash2 size={16} /></button>
                                         </div>
@@ -681,69 +849,117 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
 
             {/* New Appointment Modal */}
             {showNewAppointmentModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <GlassCard className="w-full max-w-lg p-0 overflow-hidden">
-                        <div className="bg-gradient-to-r from-[#083c79] to-blue-600 p-6">
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-white/20 rounded-lg">
-                                        <Plus className="w-6 h-6 text-white" />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-white">Nueva Cita</h3>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <GlassCard className="w-full max-w-lg p-0 overflow-hidden shadow-2xl">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-[#083c79] to-[#0a5199] p-6 text-white flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                    <CalendarIcon className="w-6 h-6 text-white" />
                                 </div>
-                                <button
-                                    onClick={() => {
-                                        setShowNewAppointmentModal(false);
-                                        setConflictWarning(null);
-                                    }}
-                                    className="p-2 text-white/70 hover:text-white"
-                                >
-                                    <X className="w-6 h-6" />
-                                </button>
+                                <div>
+                                    <h3 className="text-xl font-bold">Nueva Cita</h3>
+                                    <p className="text-blue-200 text-sm">Programar nueva consulta</p>
+                                </div>
                             </div>
+                            <button
+                                onClick={() => {
+                                    setShowNewAppointmentModal(false);
+                                    setConflictWarning(null);
+                                }}
+                                className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
                         </div>
 
-                        <div className="p-6 space-y-4">
+                        <div className="p-6 space-y-5 bg-gray-50/50">
                             {/* Conflict Warning */}
                             {conflictWarning && (
-                                <div className="flex items-center gap-2 p-3 bg-red-100 text-red-700 rounded-lg">
-                                    <AlertTriangle className="w-5 h-5" />
-                                    <span className="text-sm">{conflictWarning}</span>
+                                <div className="flex items-center gap-3 p-4 bg-red-50 text-red-700 rounded-xl border border-red-200 animate-in slide-in-from-top-2">
+                                    <AlertTriangle className="w-5 h-5 shrink-0" />
+                                    <span className="text-sm font-medium">{conflictWarning}</span>
                                 </div>
                             )}
 
-                            {/* Patient Selection */}
-                            <FloatingLabelSelect
-                                id="new-patient"
-                                label="Paciente"
-                                value={newAppointment.patientId}
-                                onChange={(e) => setNewAppointment(prev => ({ ...prev, patientId: e.target.value }))}
-                                options={patients.map(p => ({
-                                    value: p.id,
-                                    label: `${p.firstName} ${p.lastName}`
-                                }))}
-                            />
+                            {/* Tab Switcher for New Appointment Type */}
+                            <div className="flex bg-gray-100 p-1 rounded-xl mb-4">
+                                <button
+                                    onClick={() => setNewAppointment(prev => ({ ...prev, type: 'presencial' }))}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${newAppointment.type !== 'bloqueo' ? 'bg-white text-[#083c79] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Agendar Paciente
+                                </button>
+                                <button
+                                    onClick={() => setNewAppointment(prev => ({ ...prev, type: 'bloqueo', patientId: '' }))}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${newAppointment.type === 'bloqueo' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Bloquear Horario
+                                </button>
+                            </div>
 
-                            {/* Date */}
-                            <FloatingLabelInput
-                                id="new-date"
-                                label="Fecha"
-                                type="date"
-                                value={newAppointment.date}
-                                onChange={(e) => {
-                                    setNewAppointment(prev => ({ ...prev, date: e.target.value, time: '' }));
-                                    setConflictWarning(null);
-                                }}
-                                min={new Date().toISOString().split('T')[0]}
-                            />
+                            {/* Patient Selection - Only show if not blocking */}
+                            {newAppointment.type !== 'bloqueo' && (
+                                <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-100 animate-in fade-in slide-in-from-top-1">
+                                    <Autocomplete
+                                        label="Paciente"
+                                        value={newAppointment.patientId}
+                                        onChange={(val) => setNewAppointment(prev => ({ ...prev, patientId: val }))}
+                                        options={patients.map(p => ({
+                                            value: p.id,
+                                            label: `${p.firstName} ${p.lastName}`
+                                        }))}
+                                        placeholder="Buscar paciente por nombre..."
+                                    />
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Date */}
+                                <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-100">
+                                    <FloatingLabelInput
+                                        id="new-date"
+                                        label="Fecha"
+                                        type="date"
+                                        value={newAppointment.date}
+                                        onChange={(e) => {
+                                            setNewAppointment(prev => ({ ...prev, date: e.target.value, time: '' }));
+                                            setConflictWarning(null);
+                                        }}
+                                        min={new Date().toISOString().split('T')[0]}
+                                    />
+                                </div>
+
+                                {/* Sub-Type Selection (Presencial/Virtual) - Only if not blocking */}
+                                {newAppointment.type !== 'bloqueo' ? (
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-1 flex">
+                                        <button
+                                            onClick={() => setNewAppointment(prev => ({ ...prev, type: 'presencial' }))}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${newAppointment.type === 'presencial' ? 'bg-blue-100 text-[#083c79]' : 'text-gray-400 hover:bg-gray-50'}`}
+                                        >
+                                            <MapPin size={14} /> Presencial
+                                        </button>
+                                        <button
+                                            onClick={() => setNewAppointment(prev => ({ ...prev, type: 'virtual' }))}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${newAppointment.type === 'virtual' ? 'bg-purple-100 text-purple-700' : 'text-gray-400 hover:bg-gray-50'}`}
+                                        >
+                                            <Video size={14} /> Virtual
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="bg-gray-100 rounded-xl border border-gray-200 p-1 flex items-center justify-center text-gray-500 text-xs font-bold">
+                                        <Clock size={14} className="mr-2" /> Bloqueo de Agenda
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Time Selection with Available Slots */}
                             {newAppointment.date && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Horario Disponible
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                    <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                        <Clock size={16} className="text-[#083c79]" /> Horarios Disponibles
                                     </label>
-                                    <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
+                                    <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
                                         {getAvailableSlots(newAppointment.date).length > 0 ? (
                                             getAvailableSlots(newAppointment.date).map(slot => (
                                                 <button
@@ -753,7 +969,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                                                         setConflictWarning(null);
                                                     }}
                                                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${newAppointment.time === slot
-                                                        ? 'bg-[#083c79] text-white'
+                                                        ? (newAppointment.type === 'bloqueo' ? 'bg-gray-600 text-white' : 'bg-[#083c79] text-white')
                                                         : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                                                         }`}
                                                 >
@@ -769,34 +985,10 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                                 </div>
                             )}
 
-                            {/* Appointment Type */}
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={() => setNewAppointment(prev => ({ ...prev, type: 'presencial' }))}
-                                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${newAppointment.type === 'presencial'
-                                        ? 'bg-[#083c79] text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
-                                >
-                                    <MapPin className="w-5 h-5" />
-                                    Presencial
-                                </button>
-                                <button
-                                    onClick={() => setNewAppointment(prev => ({ ...prev, type: 'virtual' }))}
-                                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${newAppointment.type === 'virtual'
-                                        ? 'bg-purple-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
-                                >
-                                    <Video className="w-5 h-5" />
-                                    Virtual
-                                </button>
-                            </div>
-
                             {/* Reason */}
                             <FloatingLabelInput
                                 id="new-reason"
-                                label="Motivo de la Consulta"
+                                label={newAppointment.type === 'bloqueo' ? "Motivo del Bloqueo (Op. Cirugía, Personal...)" : "Motivo de la Consulta"}
                                 value={newAppointment.reason}
                                 onChange={(e) => setNewAppointment(prev => ({ ...prev, reason: e.target.value }))}
                             />
@@ -814,17 +1006,20 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                                 </button>
                                 <button
                                     onClick={handleCreateAppointment}
-                                    disabled={isSaving || !newAppointment.patientId || !newAppointment.date || !newAppointment.time}
-                                    className="flex-1 px-4 py-3 rounded-xl font-bold text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                                    // Disable if loading OR if (type is NOT blocking AND patient is missing) OR date/time is missing
+                                    disabled={isSaving || (newAppointment.type !== 'bloqueo' && !newAppointment.patientId) || !newAppointment.date || !newAppointment.time}
+                                    className={`flex-1 px-4 py-3 rounded-xl font-bold text-white transition-colors flex items-center justify-center gap-2
+                                        ${newAppointment.type === 'bloqueo' ? 'bg-gray-700 hover:bg-gray-800' : 'bg-green-500 hover:bg-green-600'}
+                                        disabled:bg-gray-300 disabled:cursor-not-allowed`}
                                 >
-                                    {isSaving ? 'Creando...' : 'Crear Cita'}
+                                    {isSaving ? 'Guardando...' : (newAppointment.type === 'bloqueo' ? 'Bloquear Horario' : 'Agendar Cita')}
                                 </button>
                             </div>
                         </div>
                     </GlassCard>
-                </div>
+                </div >
             )}
-        </div>
+        </div >
     );
 
 };

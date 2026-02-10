@@ -13,6 +13,7 @@ import { ConsultScreen } from './ConsultScreen';
 import { ReportScreen } from './ReportScreen';
 import { Body3DDesigner } from './Body3DDesigner';
 import { DoctorHomeScreen } from './DoctorHomeScreen';
+import { ChatScreen } from './ChatScreen';
 import { Patient, InitialHistory, SubsequentConsult, ModalContent, User } from '../../types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
@@ -112,11 +113,10 @@ export const DoctorDashboard = () => {
                         transition={{ duration: 0.3 }}
                         className="h-full w-full"
                     >
-                        <Routes location={location}>
-                            <Route path="/" element={<Navigate to="/app/home" replace />} />
-
-                            {/* NEW: Doctor Home Dashboard */}
+                        <Routes>
+                            <Route path="chat" element={<ChatScreen />} />
                             <Route path="home" element={<DoctorHomeScreen />} />
+                            <Route path="/" element={<Navigate to="/app/home" replace />} />
 
                             {/* Patient List now manages its own data fetching */}
                             <Route path="patients" element={<PatientListScreen />} />
@@ -164,6 +164,7 @@ export const DoctorDashboard = () => {
                             <Route path="reports" element={
                                 <ReportScreen />
                             } />
+
                             <Route path="body-designer" element={<Body3DDesigner />} />
                             <Route path="crearimagen/:patientId" element={<Body3DDesigner />} />
                             <Route path="crearimagen/:patientId/:snapshotId" element={<Body3DDesigner />} />

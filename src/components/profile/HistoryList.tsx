@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Eye, Plus, Edit, Trash2 } from 'lucide-react';
+import { FileText, Eye, Plus, Edit, Trash2, ClipboardList } from 'lucide-react';
 import { ActionButtonSmall } from './SharedComponents';
 import { InitialHistory, Patient } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -9,9 +9,10 @@ interface HistoryListProps {
     histories: InitialHistory[];
     navigate: (path: string, options?: any) => void;
     onDelete: (id: string) => void;
+    onViewOrders?: (item: any) => void;
 }
 
-export const HistoryList: React.FC<HistoryListProps> = ({ patient, histories, navigate, onDelete }) => {
+export const HistoryList: React.FC<HistoryListProps> = ({ patient, histories, navigate, onDelete, onViewOrders }) => {
     const { role } = useAuth();
     const isAssistant = role === 'assistant';
 
@@ -26,7 +27,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ patient, histories, na
                         Historias Clínicas
                     </h3>
                     {/* Link to Migrated History (Restored Legacy Behavior) */}
-                    {(patient.isMigrated || patient.legacyIdSistema) && !isAssistant && (
+                    {(patient.isMigrated || patient.legacyIdSistema) && (
                         <button
                             onClick={() => navigate(`/app/historiaclinica2025/${patient.id}`)}
                             className="flex items-center gap-1 text-xs font-bold text-teal-600 bg-teal-50 px-3 py-1.5 rounded-full hover:bg-teal-100 transition-colors"
@@ -35,14 +36,12 @@ export const HistoryList: React.FC<HistoryListProps> = ({ patient, histories, na
                         </button>
                     )}
                 </div>
-                {!isAssistant && (
-                    <button
-                        onClick={() => navigate(`/app/history/${patient.id}`, { state: { forceNew: true } })}
-                        className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition-colors flex items-center gap-1 border border-blue-100"
-                    >
-                        <Plus size={14} /> Nueva
-                    </button>
-                )}
+                <button
+                    onClick={() => navigate(`/app/history/${patient.id}`, { state: { forceNew: true } })}
+                    className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition-colors flex items-center gap-1 border border-blue-100"
+                >
+                    <Plus size={14} /> Nueva
+                </button>
             </div>
 
             {histories.length > 0 ? (
@@ -67,13 +66,11 @@ export const HistoryList: React.FC<HistoryListProps> = ({ patient, histories, na
 
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 {h.isValidated === false ? (
-                                    !isAssistant && (
-                                        <ActionButtonSmall
-                                            icon={<Edit size={16} />}
-                                            onClick={() => navigate(`/app/history/${patient.id}`, { state: { history: h } })}
-                                            color="amber"
-                                        />
-                                    )
+                                    <ActionButtonSmall
+                                        icon={<Edit size={16} />}
+                                        onClick={() => navigate(`/app/history/${patient.id}`, { state: { history: h } })}
+                                        color="amber"
+                                    />
                                 ) : (
                                     <>
                                         <ActionButtonSmall
@@ -81,29 +78,36 @@ export const HistoryList: React.FC<HistoryListProps> = ({ patient, histories, na
                                             onClick={() => navigate(`/app/history-view/${patient.id}/${h.id}`)}
                                             color="blue"
                                         />
-                                        {!isAssistant && (
+                                        {Array.isArray(h.medicalOrders) && h.medicalOrders.length > 0 && (
                                             <ActionButtonSmall
-                                                icon={<Edit size={16} />}
-                                                onClick={() => navigate(`/app/history/${patient.id}`, { state: { history: h } })}
-                                                color="amber"
+                                                icon={<ClipboardList size={16} />}
+                                                onClick={() => onViewOrders?.(h)}
+                                                color="emerald"
                                             />
                                         )}
+                                        <ActionButtonSmall
+                                            icon={<Edit size={16} />}
+                                            onClick={() => navigate(`/app/history/${patient.id}`, { state: { history: h } })}
+                                            color="amber"
+                                        />
                                     </>
                                 )}
-                                {!isAssistant && (
-                                    <ActionButtonSmall
-                                        icon={<Trash2 size={16} />}
-                                        onClick={() => onDelete(h.id)}
-                                        color="red"
-                                    />
-                                )}
+                                <ActionButtonSmall
+                                    icon={<Trash2 size={16} />}
+                                    onClick={() => onDelete(h.id)}
+                                    color="red"
+                                />
                             </div>
                         </div>
                     ))}
                 </div>
             ) : (
-                <div className="text-center py-6 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                    <p className="text-gray-400 text-xs">No hay historias clínicas registradas</p>
+                <div className="text-center py-6 bg-green-50/50 rounded-xl border border-dashed border-green-200">
+                    <p className="text-green-600 font-medium text-sm">
+                        {isAssistant
+                            ? "Paciente en consulta medica, pendiente historia clinica"
+                            : "Historia clinica pendiente"}
+                    </p>
                 </div>
             )}
         </div>

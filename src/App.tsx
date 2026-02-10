@@ -23,44 +23,32 @@ const PageLoader = () => (
 );
 
 import { NetworkStatus } from './components/ui/NetworkStatus';
+import { ChatProvider } from './context/ChatContext';
 
 const App = () => {
     return (
-        <Suspense fallback={<PageLoader />}>
-            <NetworkStatus />
-            <Routes>
-                {/* Public Routes - Eager Loaded */}
-                <Route path="/" element={<CenlaePage />} />
-
-                {/* Lazy Loaded Routes */}
-                <Route path="/webdesignje" element={<LandingPage />} />
-                <Route path="/auth" element={<AuthPage />} />
-                <Route path="/perfil" element={<DoctorProfilePage />} />
-                <Route path="/servicios/quirurgicos" element={<SurgicalProceduresPage />} />
-                <Route path="/servicios/endoscopicos" element={<EndoscopicProceduresPage />} />
-                <Route path="/contacto" element={<ContactPage />} />
-
-                {/* Doctor Login Route - Now Points to Staff Portal */}
-                <Route path="/app/doctor/login" element={<StaffPortalScreen />} />
-                <Route path="/app/staff" element={<StaffPortalScreen />} />
-                <Route path="/auth/login" element={<AuthPage />} /> {/* Legacy/Fallback */}
-
-                {/* Payment Callback Route (for 3DS return) */}
-                <Route path="/app/payment/callback" element={<PaymentCallbackScreen />} />
-
-                {/* Patient Portal Routes */}
-                <Route path="/app/patient/*" element={<PatientPortalRoutes />} />
-
-                {/* Assistant Dashboard Routes */}
-                <Route path="/app/assistant/*" element={<AssistantDashboard />} />
-
-                {/* Doctor Dashboard Routes (Protected) */}
-                <Route path="/app/*" element={<DoctorDashboard />} />
-
-                {/* Fallback */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-        </Suspense>
+        <ChatProvider>
+            <Suspense fallback={<PageLoader />}>
+                <NetworkStatus />
+                <Routes>
+                    <Route path="/" element={<CenlaePage />} />
+                    <Route path="/webdesignje" element={<LandingPage />} />
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route path="/perfil" element={<DoctorProfilePage />} />
+                    <Route path="/servicios/quirurgicos" element={<SurgicalProceduresPage />} />
+                    <Route path="/servicios/endoscopicos" element={<EndoscopicProceduresPage />} />
+                    <Route path="/contacto" element={<ContactPage />} />
+                    <Route path="/app/doctor/login" element={<StaffPortalScreen />} />
+                    <Route path="/app/staff" element={<StaffPortalScreen />} />
+                    <Route path="/auth/login" element={<AuthPage />} />
+                    <Route path="/app/payment/callback" element={<PaymentCallbackScreen />} />
+                    <Route path="/app/patient/*" element={<PatientPortalRoutes />} />
+                    <Route path="/app/assistant/*" element={<AssistantDashboard />} />
+                    <Route path="/app/*" element={<DoctorDashboard />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+            </Suspense>
+        </ChatProvider>
     );
 };
 

@@ -1,0 +1,273 @@
+{
+    "nav": {
+        "home": "Home",
+        "biography": "Biography",
+        "services": "Services",
+        "surgical": "Surgical",
+        "endoscopic": "Endoscopic",
+        "contact": "Contact",
+        "patient_portal": "Patient Portal"
+    },
+    "auth": {
+        "login": "Log In",
+        "register": "Register",
+        "patient_login": "Patient Access",
+        "patient_register": "Patient Registration",
+        "email": "Email Address",
+        "password": "Password",
+        "forgot_password": "Forgot your password?",
+        "dont_have_account": "Don't have an account?",
+        "already_have_account": "Already have an account?",
+        "enter": "Sign In",
+        "create_account": "Create Account",
+        "patient_portal_title": "Patient Portal",
+        "patient_portal_subtitle": "Access your history and appointments",
+        "register_here": "Register here",
+        "go_back": "Go Back",
+        "patient_register_title": "Patient Registration",
+        "patient_register_subtitle": "Complete your details to create your account",
+        "first_name": "First Name",
+        "last_name": "Last Name",
+        "phone": "Phone",
+        "confirm_password": "Confirm Password",
+        "login_here": "Log In here",
+        "min_chars": "Minimum 3 characters",
+        "invalid_email": "Invalid format (e.g.: abc@email.com)",
+        "email_taken": "This email is already registered. Please log in.",
+        "invalid_phone": "Enter 11 digits: area code + phone",
+        "passwords_dont_match": "Passwords do not match",
+        "password_requirements": "Requirements: min. 8 characters, letter, number and special character (@&#$%*!)",
+        "staff": {
+            "validating": "Validating System Access",
+            "verifying": "Verifying security and location...",
+            "secure_connection": "Secure Connection TLS 1.3",
+            "restricted_access": "Restricted Access",
+            "unauthorized": "Unauthorized Access",
+            "ip_not_authorized": "Your IP address ({{ip}}) is not authorized to access the system.",
+            "exclusive_use": "This portal is for the exclusive use of authorized personnel within clinical facilities or approved private networks.",
+            "exit": "Exit",
+            "go_back": "Go Back",
+            "system_rights": "CENLAE System. All rights reserved.",
+            "select_profile": "Select your Profile",
+            "medical_staff": "Medical Staff",
+            "medical_subtitle": "Doctors and specialists",
+            "administration": "Administration",
+            "admin_subtitle": "Assistants and Auxiliaries",
+            "enter_portal": "Enter Portal",
+            "assign_email_error": "Enter the Assigned Email to access the Portal",
+            "invalid_credentials": "Incorrect credentials or access error."
+        }
+    },
+    "hero": {
+        "title_line1": "Clinic of Endoscopy and Laparoscopy",
+        "title_line2": "of High Specialty",
+        "welcome": "Welcome",
+        "video_not_supported": "Your browser does not support HTML5 video."
+    },
+    "services": {
+        "title": "Services",
+        "surgical_title": "Surgical",
+        "endoscopic_title": "Endoscopic",
+        "surgical_items": [
+            {
+                "title": "General Surgery",
+                "desc": "Conventional surgical techniques for the treatment of prevalent diseases (hernias, ano-orificial pathology, minor surgeries)."
+            },
+            {
+                "title": "Gastrointestinal Surgery",
+                "desc": "Surgical procedures at the digestive tract level through minimal incisions producing fewer scars, less pain, and a fast recovery."
+            },
+            {
+                "title": "Minilaparoscopia",
+                "desc": "Surgical technique in gastrointestinal diseases or hernia pathology using very fine instruments (3 mm) with minimal scars and a fast recovery."
+            }
+        ],
+        "endoscopic_items": [
+            {
+                "title": "Upper Endoscopy",
+                "desc": "Endoscopic procedure that allows the internal evaluation of the esophagus, stomach, and duodenum for diagnostic and treatment purposes."
+            },
+            {
+                "title": "Colonoscopy",
+                "desc": "Endoscopic procedure that evaluates the interior of the colon and rectum for the diagnosis and treatment of their diseases."
+            },
+            {
+                "title": "Duodenoscopy",
+                "desc": "Endoscopic procedure that allows evaluating the duodenum and the Ampulla of Vater for diagnostic and therapeutic purposes."
+            },
+            {
+                "title": "ERCP",
+                "desc": "Endoscopic Retrograde Cholangiopancreatography is an endoscopic procedure used in the treatment of diseases of the bile duct and pancreatic duct."
+            },
+            {
+                "title": "Endoscopic Ultrasound",
+                "desc": "Endoscopic study that allows performing a sonographic evaluation of the intra-abdominal organs for diagnostic or therapeutic purposes."
+            },
+            {
+                "title": "Cholangioscopy",
+                "desc": "Endoscopic procedure that allows the diagnosis and treatment of diseases of the bile duct and pancreatic duct."
+            },
+            {
+                "title": "Enteroscopy",
+                "desc": "Endoscopic procedure that allows the treatment of benign and malignant diseases of the small intestine."
+            },
+            {
+                "title": "Endoscopic Capsule",
+                "desc": "Study that consists of ingesting an electronic device in the form of a capsule which takes photographs of the small intestine or colon for diagnostic purposes."
+            },
+            {
+                "title": "Intragastric Balloon",
+                "desc": "Consists of endoscopically placing a water-filled balloon for 1 year with the aim of promoting weight loss in the obese patient."
+            },
+            {
+                "title": "Nutritional Assistance",
+                "desc": "Endoscopic placement of feeding tubes in the stomach and small intestine (jejunum) for the administration of medications and food."
+            }
+        ]
+    },
+    "profile": {
+        "title": "Experience and Technology at the service of your health",
+        "p1": "With more than a decade of experience in Advanced Endoscopy and Laparoscopy, I am committed to providing accurate diagnoses.",
+        "p2": "Each procedure is performed with dedication, always prioritizing your health and well-being with minimally invasive techniques.",
+        "p3": "My mission is to provide you with a high-quality, personalized, and reliable medical service.",
+        "priority": "Your health is my priority!",
+        "more_info": "More information",
+        "experience_title": "Work Experience",
+        "education_title": "Academic Background",
+        "see_more": "See more..",
+        "see_less": "See less..",
+        "experience_items": [
+            {
+                "text": "Chief of the Endoscopy Center",
+                "subtext": "Vivian Pellas Hospital."
+            },
+            {
+                "text": "Gastrointestinal Endoscopist Surgeon",
+                "subtext": "Vivian Pellas Hospital."
+            },
+            {
+                "text": "Chief of General Surgery and Endoscopy",
+                "subtext": "SUMEDICO Hospital."
+            }
+        ],
+        "education_items": [
+            {
+                "text": "Postgraduate in Enteroscopy and Capsule",
+                "subtext": "Mexico"
+            },
+            {
+                "text": "High Specialty in Endoscopic Ultrasound",
+                "subtext": "Mexico"
+            },
+            {
+                "text": "Laparoscopic Surgery and Thoracoscopy",
+                "subtext": "Argentina"
+            }
+        ],
+        "full": {
+            "specialties": [
+                "Gastrointestinal Endoscopic Surgery",
+                "Advanced Diagnostic and Therapeutic Endoscopy",
+                "Advanced Laparoscopic Surgery",
+                "Endoscopic Ultrasound",
+                "Enteroscopy and Capsule"
+            ],
+            "vision_title": "VISION",
+            "vision_text": "To provide patients with the best possible quality of medical care in the field of Gastrointestinal Surgery and Endoscopy",
+            "mission_title": "MISSION",
+            "mission_text": "To offer minimally invasive solutions to patients with prevalent diseases of the gastrointestinal tract in a safe, accurate, and timely manner.",
+            "stats_title": "NUMBERS THAT SHOW MY COMMITMENT",
+            "years_exp": "Years of experience",
+            "procedimientos": "Procedures performed",
+            "exp_full": [
+                {
+                    "titulo": "Chief of the Gastrointestinal Endoscopy Unit",
+                    "lugar": "Vivian Pellas Hospital. Nicaragua",
+                    "periodo": "(2024 - Present)"
+                },
+                {
+                    "titulo": "Gastrointestinal Endoscopist and Laparoscopist Surgeon",
+                    "lugar": "Vivian Pellas Hospital. Nicaragua",
+                    "periodo": "(2018 - Present)"
+                },
+                {
+                    "titulo": "Chief of General Surgery and Endoscopy",
+                    "lugar": "SUMEDICO Hospital. Nicaragua",
+                    "periodo": "(2011 - 2016)"
+                },
+                {
+                    "titulo": "Attending General Surgeon",
+                    "lugar": "SUMEDICO Hospital and Vivian Pellas Hospital",
+                    "periodo": "(2006 - 2009)"
+                },
+                {
+                    "titulo": "General Practitioner",
+                    "lugar": "Juigalpa Regional Hospital. Nicaragua",
+                    "periodo": "(2000)"
+                }
+            ],
+            "edu_full": [
+                {
+                    "titulo": "Postgraduate in Enteroscopy and Endoscopic Capsule",
+                    "periodo": "(Mexico 2018)"
+                },
+                {
+                    "titulo": "High Specialty in Endoscopic Ultrasound",
+                    "periodo": "(Mexico 2017 - 2018)"
+                },
+                {
+                    "titulo": "Training and Improvement in Laparoscopic Surgery",
+                    "periodo": "(Argentina 2016)"
+                },
+                {
+                    "titulo": "Improvement in Advanced Therapeutic Endoscopy",
+                    "periodo": "(Chile 2011)"
+                },
+                {
+                    "titulo": "Improvement in Gastrointestinal Endoscopy",
+                    "periodo": "(Chile 2010 - 2011)"
+                },
+                {
+                    "titulo": "Specialty in General Surgery",
+                    "periodo": "(Chile 2003 - 2006)"
+                },
+                {
+                    "titulo": "Postgraduate in General Surgery",
+                    "periodo": "(Nicaragua 2001 - 2002)"
+                },
+                {
+                    "titulo": "Doctor of General Medicine",
+                    "periodo": "(Nicaragua 1994 - 2000)"
+                }
+            ],
+            "asoc_title": "Medical Associations"
+        }
+    },
+    "footer": {
+        "about": "CENLAE is a specialized center for minimally invasive procedures, committed to medical excellence and patient well-being.",
+        "quick_links": "Quick Links",
+        "contact": "Contact",
+        "profile_title": "Professional Profile",
+        "services_title": "Services",
+        "follow_us": "Follow Us",
+        "consultation": "Consultation",
+        "emergencies": "Emergencies",
+        "hours": "8:00 am - 5:00 pm",
+        "address_detail": "Tower 1, Floor 2, Office 208",
+        "address": "Vivian Pellas Hospital, Tower II, Floor 5, No. 512. Managua, Nicaragua.",
+        "all_rights_reserved": "All rights reserved."
+    },
+    "contact": {
+        "address_title": "ADDRESS",
+        "phone_title": "CONTACT",
+        "hours_title": "OFFICE HOURS",
+        "form_title": "More information:",
+        "full_name": "Full name",
+        "message": "Message",
+        "send": "Send",
+        "view_location": "View Location",
+        "navigate_with": "Navigate with",
+        "mon_fri": "Monday to Friday",
+        "whatsapp_template": "Hello, I am {{name}}. {{message}}"
+    }
+}

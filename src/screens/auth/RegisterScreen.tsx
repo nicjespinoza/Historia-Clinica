@@ -7,15 +7,26 @@ import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { patientSchema, PatientFormData, getDefaultPatientValues } from '../../schemas/patientSchemas';
+import { MOTIVES_LIST } from '../../constants';
+import { CheckboxList } from '../../components/ui/FormComponents';
+import { ObesityHistoryModal } from '../../components/ObesityHistoryModal';
+import { useAuth } from '../../context/AuthContext';
+import { FloatingLabelInput } from '../../components/premium-ui/FloatingLabelInput';
+import { DatePicker } from '../../components/premium-ui/DatePicker';
+import { InputWithIcon } from '../../components/ui/InputWithIcon';
 
 export const RegisterScreen = () => {
     const navigate = useNavigate();
+    const { currentUser } = useAuth();
     const [showVitalSigns, setShowVitalSigns] = useState(false);
+    const [showObesityModal, setShowObesityModal] = useState(false);
 
     const {
         control,
         handleSubmit,
         watch,
+        setValue,
+        getValues,
         formState: { errors, isSubmitting }
     } = useForm<PatientFormData>({
         resolver: zodResolver(patientSchema) as any, // Type cast for Zod v4 compatibility
@@ -30,6 +41,15 @@ export const RegisterScreen = () => {
     const calculatedAge = birthDate ? calculateAge(birthDate) : '';
     const weight = watch('vitalSigns.weight');
     const height = watch('vitalSigns.height');
+    const motives = watch('motives');
+
+    const handleMotiveChange = React.useCallback((k: string, v: boolean) => {
+        const currentMotives = getValues('motives');
+        setValue('motives', { ...currentMotives, [k]: v }, { shouldDirty: true });
+        if (k === 'Obesidad' && v) {
+            setShowObesityModal(true);
+        }
+    }, [setValue, getValues]);
 
     const calculatedIMC = React.useMemo(() => {
         if (weight && height) {
@@ -41,6 +61,13 @@ export const RegisterScreen = () => {
     }, [weight, height]);
 
     const onSubmit = async (data: PatientFormData) => {
+        // Concatenar motivos seleccionados para el campo initialReason (compatibilidad legacy)
+        const selectedMotives = Object.keys(data.motives || {})
+            .filter(k => data.motives[k]);
+
+        let motivesString = selectedMotives.join(', ');
+        if (data.motivesOther) motivesString += (motivesString ? ', ' : '') + data.motivesOther;
+
         const patientData: Patient = {
             id: '',
             firstName: data.firstName,
@@ -54,43 +81,38 @@ export const RegisterScreen = () => {
             phone: data.phone,
             phoneSecondary: data.phoneSecondary,
             address: data.address,
-            initialReason: data.initialReason,
+            initialReason: motivesString || data.initialReason,
             emergencyContactName: data.emergencyContactName,
             emergencyContactPhone: data.emergencyContactPhone,
             emergencyContactEmail: data.emergencyContactEmail,
             emergencyContactRelation: data.emergencyContactRelation,
             createdAt: new Date().toISOString(),
             registrationSource: 'manual',
-            vitalSigns: showVitalSigns ? { ...data.vitalSigns!, imc: calculatedIMC } : undefined
+            vitalSigns: showVitalSigns ? { ...data.vitalSigns!, imc: calculatedIMC } : undefined,
+            // Guardar campos estructurados centralizados
+            motives: data.motives,
+            motivesCancerDetails: data.motivesCancerDetails,
+            motivesOther: data.motivesOther
         };
 
         try {
             const createdPatient = await api.createPatient(patientData);
-            // setPatients(prev => [...prev, createdPatient]); // State update no longer needed, using cache validation
-            navigate(`/app/history/${createdPatient.id}`);
+
+            // Redirección dinámica según rol
+            const userEmail = currentUser?.email?.toLowerCase() || '';
+            if (userEmail === 'dr@cenlae.com') {
+                navigate(`/app/history/${createdPatient.id}`);
+            } else if (userEmail === 'asistente@cenlae.com') {
+                navigate(`/app/profile/${createdPatient.id}`);
+            } else {
+                // Default fallback
+                navigate(`/app/profile/${createdPatient.id}`);
+            }
         } catch (e) {
             console.error(e);
             alert("Error al guardar paciente");
         }
     };
-
-    // Componente de Input con icono (estilo dashboard)
-    const InputWithIcon = ({
-        label, icon: Icon, placeholder, error, required, children, className = ''
-    }: {
-        label: string; icon: any; placeholder?: string; error?: string; required?: boolean; children?: React.ReactNode; className?: string;
-    }) => (
-        <div className={className}>
-            <label className="block text-sm font-semibold text-[#0a3d7c] mb-1.5">
-                {label} {required && <span className="text-red-500">*</span>}
-            </label>
-            <div className={`flex items-center gap-2 border-2 ${error ? 'border-red-400' : 'border-gray-300'} rounded-xl px-3 py-2.5 bg-white hover:border-[#0a3d7c] focus-within:border-[#0a3d7c] transition-colors`}>
-                <Icon className="w-5 h-5 text-[#0a3d7c] flex-shrink-0" />
-                {children}
-            </div>
-            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-        </div>
-    );
 
     return (
         <div className="min-h-screen py-4 px-4 flex items-center justify-center font-sans relative" style={{ backgroundColor: '#083c79' }}>
@@ -154,17 +176,25 @@ export const RegisterScreen = () => {
                                 name="birthDate"
                                 control={control}
                                 render={({ field }) => (
-                                    <InputWithIcon label="Fecha de Nacimiento" icon={Calendar} required error={errors.birthDate?.message}>
-                                        <input
-                                            type="date"
-                                            className={`flex-1 outline-none bg-transparent ${field.value ? 'text-gray-800' : 'text-gray-400'}`}
-                                            placeholder="Seleccione fecha"
-                                            style={{
-                                                colorScheme: 'light'
-                                            }}
-                                            {...field}
-                                        />
-                                    </InputWithIcon>
+                                    <DatePicker
+                                        label="Fecha de Nacimiento"
+                                        required
+                                        error={errors.birthDate?.message}
+                                        value={field.value ? new Date(`${field.value}T12:00:00`) : null}
+                                        onChange={(date) => {
+                                            if (date) {
+                                                const year = date.getFullYear();
+                                                const month = String(date.getMonth() + 1).padStart(2, '0');
+                                                const day = String(date.getDate()).padStart(2, '0');
+                                                field.onChange(`${year}-${month}-${day}`);
+                                            } else {
+                                                field.onChange('');
+                                            }
+                                        }}
+                                        maxDate={new Date()}
+                                        showYearDropdown
+                                        showMonthDropdown
+                                    />
                                 )}
                             />
 
@@ -349,22 +379,64 @@ export const RegisterScreen = () => {
                     </div>
 
                     {/* MOTIVO DE CONSULTA */}
-                    <div className="mb-6">
-                        <label className="block text-sm font-semibold text-[#0a3d7c] mb-1.5">
-                            Motivo de Consulta (Inicial)
+                    <div className="mb-6 bg-gray-50/50 rounded-xl p-4 border border-gray-100">
+                        <label className="block text-sm font-bold text-[#0a3d7c] uppercase mb-4 flex items-center gap-2">
+                            <Activity size={16} /> Motivo de Consulta (Inicial)
                         </label>
-                        <Controller
-                            name="initialReason"
-                            control={control}
-                            render={({ field }) => (
-                                <textarea
-                                    rows={2}
-                                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 outline-none text-gray-800 placeholder-gray-400 hover:border-[#0a3d7c] focus:border-[#0a3d7c] transition-colors resize-none"
-                                    placeholder="Describa brevemente el motivo de la consulta..."
-                                    {...field}
-                                />
+
+                        <div className="bg-white p-4 rounded-xl border border-gray-200">
+                            <CheckboxList
+                                items={MOTIVES_LIST}
+                                data={motives || {}}
+                                onChange={handleMotiveChange}
+                            />
+
+                            {/* Conditional Cancer Details */}
+                            {(motives?.['Cáncer'] || motives?.['Cancer']) && (
+                                <div className="mt-4 animate-in zoom-in-95 duration-200">
+                                    <Controller
+                                        name="motivesCancerDetails"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <FloatingLabelInput
+                                                label="Cáncer: ¿Cuáles?"
+                                                value={field.value || ''}
+                                                onChange={field.onChange}
+                                                wrapperClassName="bg-white border-2 border-orange-200 rounded-xl focus-within:border-[#083C79]"
+                                            />
+                                        )}
+                                    />
+                                </div>
                             )}
-                        />
+
+                            <div className="mt-4">
+                                <Controller
+                                    name="motivesOther"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <FloatingLabelInput
+                                            label="Otro / ¿Cuál?"
+                                            value={field.value || ''}
+                                            onChange={field.onChange}
+                                            wrapperClassName="bg-white border-2 border-gray-400 rounded-xl focus-within:border-[#083C79]"
+                                        />
+                                    )}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Obesity History Modal */}
+                        {showObesityModal && (
+                            <ObesityHistoryModal
+                                isOpen={showObesityModal}
+                                onClose={() => setShowObesityModal(false)}
+                                initialData={getValues('obesityHistory')}
+                                onSave={(obesityData) => {
+                                    setValue('obesityHistory', obesityData, { shouldDirty: true });
+                                    setShowObesityModal(false);
+                                }}
+                            />
+                        )}
                     </div>
 
                     {/* SIGNOS VITALES (Toggle) */}

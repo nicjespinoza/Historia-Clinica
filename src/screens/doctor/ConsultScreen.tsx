@@ -361,12 +361,17 @@ export const ConsultScreen = ({ patients, setConsults }: ConsultScreenProps) => 
 
             const dataToSave = { ...c, status: statusToSave };
 
+            // Remove undefined values (fixes obesityHistory: undefined error)
+            const cleanData = Object.fromEntries(
+                Object.entries(dataToSave).filter(([_, v]) => v !== undefined)
+            ) as any;
+
             if ('id' in c && c.id) {
                 // Update existing (Draft or Edit)
-                await api.updateConsult(c.id, dataToSave);
+                await api.updateConsult(c.id, cleanData);
             } else {
                 // Create new
-                await api.createConsult(dataToSave);
+                await api.createConsult(cleanData);
             }
 
             navigate(`/app/profile/${patient?.id}`);

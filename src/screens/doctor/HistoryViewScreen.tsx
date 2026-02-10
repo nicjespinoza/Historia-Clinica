@@ -89,8 +89,26 @@ export const HistoryViewScreen = () => {
         if (data.results && data.results.trim()) details.push(`Resultados: ${data.results}`);
         if (data.surgeries && data.surgeries.trim()) details.push(`Cirugías: ${data.surgeries}`);
 
+        // Individual Habit Details
+        if (data.drugsDetails && data.drugsDetails.trim()) details.push(`Detalle Drogas: ${data.drugsDetails}`);
+        if (data.psychDetails && data.psychDetails.trim()) details.push(`Detalle Psicofármacos: ${data.psychDetails}`);
+        if (data.controlledDetails && data.controlledDetails.trim()) details.push(`Detalle Medicamentos Controlados: ${data.controlledDetails}`);
+        if (data.cancerDetails && data.cancerDetails.trim()) details.push(`Detalle Cáncer: ${data.cancerDetails}`);
+        if (data.details && data.details.trim()) details.push(data.details);
+
+        // Endoscopy Procedures
+        if (Array.isArray(data.procedures) && data.procedures.length > 0) {
+            data.procedures.forEach((p: any, i: number) => {
+                const parts = [];
+                if (p.which) parts.push(`Procedimiento: ${p.which}`);
+                if (p.lastDate) parts.push(`Fecha: ${p.lastDate}`);
+                if (p.results) parts.push(`Resultados: ${p.results}`);
+                if (parts.length > 0) details.push(`[${i + 1}] ${parts.join(' • ')}`);
+            });
+        }
+
         // For transfusions - check reactions
-        if (data.reactions === true) details.push('Con reacciones adversas');
+        if (data.reactions === true || (data.reactions && data.reactions.yes === true)) details.push('Con reacciones adversas');
 
         // For gyneco - G, P, A, C
         if (data.g || data.p || data.a || data.c) {
@@ -280,23 +298,42 @@ export const HistoryViewScreen = () => {
     const familyDetails = hasFamilyHistory ? getFullDetails(h.familyHistory) : [];
 
     // Physical exam data check
-    const hasVitalSigns = pe.fc || pe.fr || pe.temp || pe.pa || pe.weight || pe.imc || pe.sat02 || pe.height;
+
     const hasSystemsData = Object.keys(systems).length > 0;
 
     // System fields mapping
     const systemLabels: { [key: string]: string } = {
-        piel: 'Piel y Anexos',
-        cabeza: 'Cabeza y Cuello',
-        torax: 'Tórax',
-        cardiaco: 'Cardiovascular',
-        pulmonar: 'Pulmonar',
-        abdomen: 'Abdomen',
-        miembrosuper: 'Miembros Superiores',
-        miembroinfe: 'Miembros Inferiores',
-        neuro: 'Neurológico',
-        genitales: 'Genitourinario',
-        tacto: 'Tacto Rectal',
+        "Piel y anexos": 'Piel y Anexos',
+        "Cabeza": 'Cabeza',
+        "Cuello": 'Cuello',
+        "Torax": 'Tórax',
+        "Cardiaco": 'Cardiovascular',
+        "Pulmonar": 'Pulmonar',
+        "Abdomen": 'Abdomen',
+        "Miembros superiores": 'Miembros Superiores',
+        "Miembros inferiores": 'Miembros Inferiores',
+        "Neurologico": 'Neurológico',
+        "Genitales": 'Genitales',
+        "Tacto Rectal": 'Tacto Rectal',
     };
+
+    // MERGE VITALS: Use history data first, fallback to patient current vitals
+    const pVital = patient?.vitalSigns || {} as any;
+    const displayPe = {
+        fc: pe.fc || pVital.fc,
+        fr: pe.fr || pVital.fr,
+        temp: pe.temp || pVital.temp,
+        sat02: pe.sat02 || pVital.sat02,
+        pa: pe.pa || pVital.pa,
+        pam: pe.pam || pVital.pam,
+        weight: pe.weight || pVital.weight,
+        height: pe.height || pVital.height,
+        imc: pe.imc || pVital.imc
+    };
+
+    // Re-evaluate based on merged data
+    const hasVitalSigns = displayPe.fc || displayPe.fr || displayPe.temp || displayPe.pa || displayPe.weight || displayPe.imc || displayPe.sat02 || displayPe.height;
+
 
     return (
         <div className="min-h-screen bg-gray-100 pb-20 font-sans print:bg-white">
@@ -336,7 +373,12 @@ export const HistoryViewScreen = () => {
                 {/* Header */}
                 <div className="border-b-4 border-[#083c79] pb-4 mb-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-                        <div>
+                        <div className="flex-1">
+                            <img
+                                src="https://static.wixstatic.com/media/3743a7_bc65d6328e9c443e95b330a92181fbc8~mv2.png/v1/crop/x_13,y_9,w_387,h_61/fill/w_542,h_85,al_c,lg_1,q_85,enc_avif,quality_auto/logo-drmairenavalle.png"
+                                alt="Dr. Milton Mairena Logo"
+                                className="h-16 mb-4 object-contain"
+                            />
                             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#083c79] tracking-tight mb-1">HISTORIA CLÍNICA</h1>
                             <div className="text-sm font-medium text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
                                 <span>📅 {displayDate}</span>
@@ -355,6 +397,7 @@ export const HistoryViewScreen = () => {
                     <h3 className="font-bold text-[#083c79] text-sm uppercase mb-3">Motivo de Consulta</h3>
                     <p className="text-gray-900 font-medium text-lg">
                         {formatCheckboxData(h.motives) || 'No especificado'}
+                        {h.motivesCancerDetails && <span className="text-orange-600 font-semibold"> - Detalle Cáncer: {h.motivesCancerDetails}</span>}
                         {h.otherMotive && <span className="text-gray-600"> - {h.otherMotive}</span>}
                     </p>
                     {h.evolutionTime && (
@@ -421,6 +464,7 @@ export const HistoryViewScreen = () => {
                     <p className="text-gray-500 mb-6 p-3 bg-gray-50 rounded-lg italic">No refiere hábitos ni exposiciones relevantes</p>
                 )}
 
+
                 {/* Antecedentes Heredofamiliares */}
                 {hasFamilyHistory && (
                     <>
@@ -434,8 +478,113 @@ export const HistoryViewScreen = () => {
                     </>
                 )}
 
-                {/* V. Examen Físico - Órganos y Sistemas */}
-                <SectionHeader title="Examen Físico - Órganos y Sistemas" numeral="V" />
+                {/* V. Signos Vitales */}
+                {hasVitalSigns && (
+                    <>
+                        <SectionHeader title="Signos Vitales" numeral="V" />
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                            {displayPe.fc && (
+                                <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                                        FC
+                                    </div>
+                                    <div className="px-4 py-3 bg-white flex items-baseline gap-1">
+                                        <span className="text-xl font-bold text-[#083c79]">{displayPe.fc}</span>
+                                        <span className="text-xs text-gray-400 font-medium">lpm</span>
+                                    </div>
+                                </div>
+                            )}
+                            {displayPe.fr && (
+                                <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                                        FR
+                                    </div>
+                                    <div className="px-4 py-3 bg-white flex items-baseline gap-1">
+                                        <span className="text-xl font-bold text-[#083c79]">{displayPe.fr}</span>
+                                        <span className="text-xs text-gray-400 font-medium">rpm</span>
+                                    </div>
+                                </div>
+                            )}
+                            {displayPe.temp && (
+                                <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                                        Temperatura
+                                    </div>
+                                    <div className="px-4 py-3 bg-white flex items-baseline gap-1">
+                                        <span className="text-xl font-bold text-[#083c79]">{displayPe.temp}</span>
+                                        <span className="text-xs text-gray-400 font-medium">°C</span>
+                                    </div>
+                                </div>
+                            )}
+                            {displayPe.sat02 && (
+                                <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                                        SatO2
+                                    </div>
+                                    <div className="px-4 py-3 bg-white flex items-baseline gap-1">
+                                        <span className="text-xl font-bold text-[#083c79]">{displayPe.sat02}</span>
+                                        <span className="text-xs text-gray-400 font-medium">%</span>
+                                    </div>
+                                </div>
+                            )}
+                            {(displayPe.pa || displayPe.pam) && (
+                                <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                                        PA (mmHg)
+                                    </div>
+                                    <div className="px-4 py-3 bg-white flex items-baseline gap-1">
+                                        <span className="text-xl font-bold text-[#083c79]">{displayPe.pa || '--/--'}</span>
+                                        {displayPe.pam && <span className="text-xs text-gray-500">({displayPe.pam})</span>}
+                                    </div>
+                                </div>
+                            )}
+                            {displayPe.pam && !displayPe.pa && (
+                                <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                                        PAM (mmHg)
+                                    </div>
+                                    <div className="px-4 py-3 bg-white flex items-baseline gap-1">
+                                        <span className="text-xl font-bold text-[#083c79]">{displayPe.pam}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {displayPe.weight && (
+                                <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                                        Peso
+                                    </div>
+                                    <div className="px-4 py-3 bg-white flex items-baseline gap-1">
+                                        <span className="text-xl font-bold text-[#083c79]">{displayPe.weight}</span>
+                                        <span className="text-xs text-gray-400 font-medium">kg</span>
+                                    </div>
+                                </div>
+                            )}
+                            {displayPe.height && (
+                                <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                                        Altura
+                                    </div>
+                                    <div className="px-4 py-3 bg-white flex items-baseline gap-1">
+                                        <span className="text-xl font-bold text-[#083c79]">{displayPe.height}</span>
+                                        <span className="text-xs text-gray-400 font-medium">cm</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        {displayPe.imc && (
+                            <div className="flex gap-4 mb-8">
+                                <div className="px-4 py-2 bg-blue-50 text-blue-800 rounded-lg border border-blue-200 font-bold text-sm shadow-sm inline-flex items-center gap-2">
+                                    <span>IMC:</span>
+                                    <span className="text-lg">{displayPe.imc} <span className="text-xs font-normal opacity-70">kg/m²</span></span>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {/* VI. Examen Físico - Órganos y Sistemas */}
+                <SectionHeader title="Examen Físico - Órganos y Sistemas" numeral={hasVitalSigns ? "VI" : "V"} />
 
                 <div className="mb-6 overflow-x-auto">
                     <table className="w-full border-collapse bg-white rounded-lg overflow-hidden shadow-sm">
@@ -481,25 +630,51 @@ export const HistoryViewScreen = () => {
                     </table>
                 </div>
 
+                {/* Estudios Previos (Movido aquí por solicitud del usuario) */}
+                {isPositive(h.previousStudies) && (
+                    <>
+                        <SectionHeader title="Estudios Diagnósticos Previos" numeral="IV.B" />
+                        <div className="mb-6">
+                            <ConditionCard label="Estudios Previos" details={getFullDetails(h.previousStudies)} color="amber" />
+                        </div>
+                    </>
+                )}
+
                 {/* Comentarios */}
                 {(h.notes || h.comments) && (
                     <TextSection title="Comentarios / Observaciones" content={h.notes || h.comments} />
                 )}
 
                 {/* Diagnóstico */}
-                {h.diagnosis && (
+                {(h.diagnosis || h.diagnoses) && (
                     <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 mb-6">
                         <h3 className="font-bold text-green-800 text-sm uppercase mb-3 flex items-center gap-2">
                             <Check size={18} /> Diagnóstico
                         </h3>
-                        <p className="text-gray-800 leading-relaxed whitespace-pre-line font-medium">{h.diagnosis}</p>
+                        <div className="space-y-2">
+                            {Array.isArray(h.diagnosis) ? (
+                                h.diagnosis.filter(d => d.trim()).map((d, i) => (
+                                    <p key={i} className="text-gray-800 leading-relaxed font-medium">
+                                        <span className="text-green-700 mr-2">{i + 1}.</span> {d}
+                                    </p>
+                                ))
+                            ) : Array.isArray(h.diagnoses) ? (
+                                h.diagnoses.filter(d => d.trim()).map((d, i) => (
+                                    <p key={i} className="text-gray-800 leading-relaxed font-medium">
+                                        <span className="text-green-700 mr-2">{i + 1}.</span> {d}
+                                    </p>
+                                ))
+                            ) : (
+                                <p className="text-gray-800 leading-relaxed whitespace-pre-line font-medium">{h.diagnosis}</p>
+                            )}
+                        </div>
                     </div>
                 )}
 
-                {/* Tratamiento */}
+                {/* VII. Plan de Tratamiento */}
                 {h.treatment && (h.treatment.food || h.treatment.meds || h.treatment.exams || h.treatment.norms) && (
                     <>
-                        <SectionHeader title="Plan de Tratamiento" numeral="VI" />
+                        <SectionHeader title="Plan de Tratamiento" numeral={hasVitalSigns ? "VII" : "VI"} />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                             {h.treatment.food && (
                                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
@@ -510,41 +685,87 @@ export const HistoryViewScreen = () => {
                             {h.treatment.meds && (
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                     <h4 className="font-bold text-blue-800 text-sm uppercase mb-2">💊 Medicamentos</h4>
-                                    <p className="text-gray-700 text-sm whitespace-pre-line">{h.treatment.meds}</p>
+                                    <div className="text-gray-700 text-sm whitespace-pre-line">
+                                        {Array.isArray(h.treatment.meds) ? h.treatment.meds.filter(m => m.trim()).join('\n') : h.treatment.meds}
+                                    </div>
                                 </div>
                             )}
                             {h.treatment.exams && (
                                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                                     <h4 className="font-bold text-purple-800 text-sm uppercase mb-2">🔬 Exámenes</h4>
-                                    <p className="text-gray-700 text-sm whitespace-pre-line">{h.treatment.exams}</p>
+                                    <div className="text-gray-700 text-sm whitespace-pre-line">
+                                        {Array.isArray(h.treatment.exams) ? h.treatment.exams.filter(e => e.trim()).join('\n') : h.treatment.exams}
+                                    </div>
                                 </div>
                             )}
                             {h.treatment.norms && (
                                 <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
                                     <h4 className="font-bold text-teal-800 text-sm uppercase mb-2">📋 Normas / Recomendaciones</h4>
-                                    <p className="text-gray-700 text-sm whitespace-pre-line">{h.treatment.norms}</p>
+                                    <div className="text-gray-700 text-sm whitespace-pre-line">
+                                        {Array.isArray(h.treatment.norms) ? h.treatment.norms.filter(n => n.trim()).join('\n') : h.treatment.norms}
+                                    </div>
                                 </div>
                             )}
                         </div>
                     </>
                 )}
 
-                {/* Órdenes Generadas */}
-                {(h as any).orders && Object.values((h as any).orders).some((o: any) => o.included) && (
+                {/* VIII. Órdenes Generadas */}
+                {Array.isArray(h.medicalOrders) && h.medicalOrders.length > 0 && (
                     <>
-                        <SectionHeader title="Órdenes Generadas" numeral="VII" />
+                        <SectionHeader title="Órdenes Médicas" numeral={hasVitalSigns ? "VIII" : "VII"} />
+                        <div className="space-y-4 mb-6">
+                            {h.medicalOrders.map((order: any, idx: number) => {
+                                const labels: any = {
+                                    prescription: '💊 Receta Médica',
+                                    lab_general: '🧪 Laboratorio (General)',
+                                    lab_basic: '🧪 Laboratorio (Panel Básico)',
+                                    lab_extended: '🧪 Laboratorio (Panel Ampliado)',
+                                    lab_feces: '🧪 Laboratorio (Heces)',
+                                    image: '🩻 Estudio de Imagen',
+                                    endoscopy: '🔬 Endoscopia'
+                                };
+                                return (
+                                    <div key={idx} className="border-2 border-gray-200 rounded-xl p-5 bg-white shadow-sm hover:border-[#083c79]/30 transition-colors">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h4 className="font-bold text-[#083c79] text-base">{labels[order.type] || order.type}</h4>
+                                            <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded uppercase">Orden #{idx + 1}</span>
+                                        </div>
+                                        {order.diagnosis && (
+                                            <div className="mb-3">
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Diagnóstico / Razón</p>
+                                                <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded-lg border border-gray-100 italic">{order.diagnosis}</p>
+                                            </div>
+                                        )}
+                                        {order.content && (
+                                            <div>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Contenido / Detalles</p>
+                                                <p className="text-sm text-gray-800 whitespace-pre-line leading-relaxed">{order.content}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
+
+                {/* Legacy Orders (Fallback) */}
+                {(!Array.isArray(h.orders)) && h.orders && Object.values(h.orders).some((o: any) => o.included) && (
+                    <>
+                        <SectionHeader title="Órdenes Generadas" numeral={hasVitalSigns ? "VIII" : "VII"} />
                         <div className="space-y-3 mb-6">
-                            {Object.entries((h as any).orders).map(([key, value]: [string, any]) => {
+                            {Object.entries(h.orders).map(([key, value]: [string, any]) => {
                                 if (!value.included) return null;
                                 const labels: any = {
                                     medical: '📄 Orden Médica',
                                     prescription: '💊 Receta Médica',
                                     labs: '🧪 Orden de Laboratorios',
-                                    images: '🩻 Orden de Imágenes',
-                                    endoscopy: '🔬 Orden de Endoscopias'
+                                    images: '🩻 Orden de Imagen',
+                                    endoscopy: '🔬 Orden de Endoscopia'
                                 };
                                 return (
-                                    <div key={key} className="border border-gray-300 rounded-lg p-4 bg-white">
+                                    <div key={key} className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm">
                                         <h4 className="font-bold text-[#083c79] text-sm mb-2">{labels[key] || key}</h4>
                                         <p className="text-gray-700 text-sm whitespace-pre-line">{value.details || 'Sin detalles'}</p>
                                     </div>

@@ -7,7 +7,11 @@ import { GlassCard } from '../../components/premium-ui/GlassCard';
 import { useAuth } from '../../context/AuthContext';
 
 // No props needed anymore as it fetches its own data
-export const PatientListScreen = () => {
+interface PatientListScreenProps {
+    basePath?: string;
+}
+
+export const PatientListScreen = ({ basePath = '/app' }: PatientListScreenProps) => {
     const [patients, setPatients] = useState<Patient[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
@@ -97,23 +101,17 @@ export const PatientListScreen = () => {
         }
     };
 
-    // Initial Load - Get ALL patients for client-side pagination (Better UX for < 2000 docs)
+    // Initial Load - Real-time subscription
     useEffect(() => {
-        loadInitialData();
-    }, []);
-
-    const loadInitialData = async () => {
-        try {
-            setLoading(true);
-            // Fetch ALL patients cached
-            const allPatients = await api.getPatients();
-            setPatients(allPatients);
-        } catch (error) {
-            console.error("Error loading patients:", error);
-        } finally {
+        setLoading(true);
+        const unsubscribe = api.subscribeToPatients((updatedPatients) => {
+            setPatients(updatedPatients);
             setLoading(false);
-        }
-    };
+        });
+
+        // Cleanup subscription on unmount
+        return () => unsubscribe();
+    }, []);
 
     // Filter logic
     const filtered = patients.filter(p => {
@@ -167,7 +165,7 @@ export const PatientListScreen = () => {
                     </h2>
                     <div className="flex w-full md:w-auto gap-3">
                         <button
-                            onClick={() => navigate('/app/register')}
+                            onClick={() => navigate(`${basePath}/register`)}
                             className="bg-[#084286] text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-blue-900 transition shadow-lg shadow-blue-900/20 w-full md:w-auto justify-center font-medium"
                         >
                             <UserPlus size={20} /> Crear Nuevo
@@ -322,7 +320,7 @@ export const PatientListScreen = () => {
                                         )}
                                     </div>
                                     <Link
-                                        to={`/app/profile/${p.id}`}
+                                        to={`${basePath}/profile/${p.id}`}
                                         className="bg-blue-50 text-blue-600 p-3 rounded-xl hover:bg-blue-600 hover:text-white transition-all text-center group-hover:shadow-md"
                                     >
                                         <ArrowLeft className="rotate-180 mx-auto" size={20} />

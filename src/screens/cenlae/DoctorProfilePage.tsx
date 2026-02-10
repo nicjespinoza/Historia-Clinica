@@ -1,57 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 // Asegúrate de que estas rutas sean correctas en tu proyecto
 import { NavbarCenlae } from './NavbarCenlae';
 import { FooterCenlae } from './FooterCenlae';
 
-// --- DATA ---
-const especialidades = [
-    'Cirugía Endoscópica Gastrointestinal',
-    'Endoscopia Diagnóstica y Terapéutica Avanzada',
-    'Cirugía Laparoscópica Avanzada',
-    'Ultrasonido Endoscópico',
-    'Enteroscopia y Cápsula',
-];
-
-const experienciaLaboral = [
-    {
-        titulo: 'Jefe de la Unidad de Endoscopia Gastrointestinal',
-        lugar: 'Hospital Vivian Pellas. Nicaragua',
-        periodo: '(2024 - Presente)',
-    },
-    {
-        titulo: 'Cirujano Endoscopista y Laparoscopista Gastrointestinal',
-        lugar: 'Hospital Vivian Pellas. Nicaragua',
-        periodo: '(2018 - Presente)',
-    },
-    {
-        titulo: 'Jefe de Cirugía General y Endoscopia',
-        lugar: 'Hospital SUMEDICO. Nicaragua',
-        periodo: '(2011 - 2016)',
-    },
-    {
-        titulo: 'Cirujano General Adscrito',
-        lugar: 'Hospital SUMEDICO y Hospital Vivian Pellas',
-        periodo: '(2006 - 2009)',
-    },
-    {
-        titulo: 'Médico General',
-        lugar: 'Hospital Regional Juigalpa. Nicaragua',
-        periodo: '(2000)',
-    },
-];
-
-const formacionAcademica = [
-    { titulo: 'Postgrado en Enteroscopia y Cápsula Endoscópica', periodo: '(Mexico 2018)' },
-    { titulo: 'Alta Especialidad de Ultrasonido Endoscópico', periodo: '(Mexico 2017 - 2018)' },
-    { titulo: 'Capacitación y Perfeccionamiento en Cirugía Laparoscópica', periodo: '(Argentina 2016)' },
-    { titulo: 'Perfeccionamiento en Endoscopia Terapéutica Avanzada', periodo: '(Chile 2011)' },
-    { titulo: 'Perfeccionamiento en Endoscopia Gastrointestinal', periodo: '(Chile 2010 - 2011)' },
-    { titulo: 'Especialidad en Cirugía General', periodo: '(Chile 2003 - 2006)' },
-    { titulo: 'Postgrado en Cirugía General', periodo: '(Nicaragua 2001 - 2002)' },
-    { titulo: 'Doctor en Medicina General', periodo: '(Nicaragua 1994 - 2000)' },
-];
-
+// Associations data remains static as they are entity names
 const asociaciones = [
     {
         logo: 'https://static.wixstatic.com/media/3743a7_f51d7218aaf94bb780362b23a7807f5e~mv2.jpg/v1/crop/x_197,y_214,w_1727,h_1203/fill/w_494,h_310,al_c,q_80,usm_0.66_1.00_0.01,enc_avif,quality_auto/ASGE_FullLogo_Color-01.jpg',
@@ -96,6 +50,11 @@ const VerticalTimeline = ({ items }: { items: any[] }) => (
 );
 
 export const DoctorProfilePage = () => {
+    const { t } = useTranslation();
+    const especialidades = t('profile.full.specialties', { returnObjects: true }) as string[];
+    const experienciaLaboral = t('profile.full.exp_full', { returnObjects: true }) as any[];
+    const formacionAcademica = t('profile.full.edu_full', { returnObjects: true }) as any[];
+
     React.useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
@@ -162,34 +121,28 @@ export const DoctorProfilePage = () => {
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        // --- CAMBIO CLAVE AQUÍ ---
-                        // Antes tenía poco padding (p-2 o p-3).
-                        // Ahora usamos 'px-8 md:px-24' para darle mucho margen a los lados.
-                        // Usamos 'py-6' para mantenerla relativamente corta de alto.
-                        className="rounded-3xl overflow-hidden shadow-xl bg-[#003366] py-6 px-8 md:px-30"
+                        className="max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-xl bg-[#003366] py-10 px-4 md:px-8 flex justify-center"
                     >
                         {/* Caja Blanca Interna */}
-                        {/* Ajusté el padding interno y el redondeado para que se vea bien con el nuevo espacio externo */}
-                        <div className="bg-white rounded-2xl py-8 px-6 text-center shadow-inner">
-                            <div className="max-w-3xl mx-auto flex flex-col gap-6">
+                        <div className="bg-white rounded-2xl py-10 px-6 md:px-12 text-center shadow-inner w-full">
+                            <div className="flex flex-col gap-10">
                                 {/* Visión */}
                                 <div>
-                                    <h3 className="text-xl md:text-2xl font-bold text-[#003366] uppercase mb-2">
-                                        VISIÓN
+                                    <h3 className="text-xl md:text-2xl font-bold text-[#003366] uppercase mb-3">
+                                        {t('profile.full.vision_title')}
                                     </h3>
-                                    {/* max-w-xl ayuda a que el texto no se estire demasiado */}
-                                    <p className="text-gray-900 font-medium leading-relaxed max-w-xl mx-auto text-sm md:text-base">
-                                        Brindar a los pacientes la mejor calidad posible de atención medica en el campo de la Cirugía y Endoscopia Gastrointestinal
+                                    <p className="text-gray-900 font-medium leading-relaxed max-w-[550px] mx-auto text-sm md:text-base">
+                                        {t('profile.full.vision_text')}
                                     </p>
                                 </div>
 
                                 {/* Misión */}
                                 <div>
-                                    <h3 className="text-xl md:text-2xl font-bold text-[#003366] uppercase mb-2">
-                                        MISIÓN
+                                    <h3 className="text-xl md:text-2xl font-bold text-[#003366] uppercase mb-3">
+                                        {t('profile.full.mission_title')}
                                     </h3>
-                                    <p className="text-gray-900 font-medium leading-relaxed max-w-xl mx-auto text-sm md:text-base">
-                                        Ofrecer soluciones mínimamente invasivas a los pacientes con enfermedades prevalente del aparato gastrointestinal de una forma segura, precisa y oportuna.
+                                    <p className="text-gray-900 font-medium leading-relaxed max-w-[650px] mx-auto text-sm md:text-base">
+                                        {t('profile.full.mission_text')}
                                     </p>
                                 </div>
                             </div>
@@ -204,20 +157,20 @@ export const DoctorProfilePage = () => {
                         className="bg-white border-2 border-gray-800 rounded-3xl p-6 md:p-8 shadow-lg"
                     >
                         <h3 className="text-center text-xl md:text-2xl font-bold text-[#003366] mb-6 uppercase">
-                            NÚMEROS QUE MUESTRAN MI COMPROMISO
+                            {t('profile.full.stats_title')}
                         </h3>
 
                         <div className="flex flex-col md:flex-row justify-center items-center gap-6">
                             {/* Caja 1 */}
                             <div className="bg-[#003366] text-white py-4 px-6 rounded-lg text-center w-full md:w-64 shadow-md hover:scale-105 transition-transform">
                                 <span className="block text-2xl font-bold mb-1">+ 15</span>
-                                <span className="text-sm font-medium">Años de experiencia</span>
+                                <span className="text-sm font-medium">{t('profile.full.years_exp')}</span>
                             </div>
 
                             {/* Caja 2 */}
                             <div className="bg-[#003366] text-white py-4 px-6 rounded-lg text-center w-full md:w-64 shadow-md hover:scale-105 transition-transform">
                                 <span className="block text-2xl font-bold mb-1">+ 8,000</span>
-                                <span className="text-sm font-medium">Procedimientos realizados</span>
+                                <span className="text-sm font-medium">{t('profile.full.procedimientos')}</span>
                             </div>
                         </div>
                     </motion.section>
@@ -232,7 +185,7 @@ export const DoctorProfilePage = () => {
                         className="rounded-3xl overflow-hidden shadow-2xl bg-[#003366] text-white flex flex-col"
                     >
                         <div className="p-8 text-center border-b border-white/10 bg-[#002b55]">
-                            <h3 className="text-2xl md:text-3xl font-bold tracking-widest uppercase">Experiencia Laboral</h3>
+                            <h3 className="text-2xl md:text-3xl font-bold tracking-widest uppercase">{t('profile.experience_title')}</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 flex-grow">
                             {/* Left: Image (Full Height Fix) */}
@@ -260,7 +213,7 @@ export const DoctorProfilePage = () => {
                         className="rounded-3xl overflow-hidden shadow-2xl bg-[#003366] text-white flex flex-col"
                     >
                         <div className="p-8 text-center border-b border-white/10 bg-[#002b55]">
-                            <h3 className="text-2xl md:text-3xl font-bold tracking-widest uppercase">Formación Académica</h3>
+                            <h3 className="text-2xl md:text-3xl font-bold tracking-widest uppercase">{t('profile.education_title')}</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 flex-grow">
                             {/* Left: Timeline (Desktop) */}
@@ -286,7 +239,7 @@ export const DoctorProfilePage = () => {
                         className="py-12"
                     >
                         <h3 className="text-center text-2xl font-bold text-[#003366] mb-12 uppercase tracking-widest">
-                            Asociaciones Médicas
+                            {t('profile.full.asoc_title')}
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {asociaciones.map((asoc, index) => (
