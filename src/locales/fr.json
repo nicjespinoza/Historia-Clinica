@@ -71,11 +71,22 @@
         "surgical_items": [
             {
                 "title": "Chirurgie Générale",
-                "desc": "Techniques chirurgicales conventionnelles pour le traitement des maladies prévalentes (hernies, pathologie ano-orificielle, chirurgies mineures)."
+                "desc": "Techniques chirurgicales conventionnelles pour le traitement des maladies prévalentes (hernies, pathologie ano-orificielle, chirurgies mineures).",
+                "features": [
+                    "Traitement chirurgical de la pathologie herniaire.",
+                    "Diagnostic et traitement des maladies ano-rectales (maladie hémorroïdaire, fistules, abcès, fissures)",
+                    "Laparoscopie diagnostique en pathologie oncologique"
+                ]
             },
             {
                 "title": "Chirurgie Gastro-intestinale",
-                "desc": "Procédures chirurgicales au niveau du tube digestif par de petites incisions produisant moins de cicatrices, moins de douleur et une récupération rapide."
+                "desc": "Procédures chirurgicales au niveau du tube digestif par de petites incisions produisant moins de cicatrices, moins de douleur et une récupération rapide.",
+                "features": [
+                    "Traitement laparoscopique de la lithiase vésiculaire",
+                    "Traitement mini-invasif du reflux gastro-œsophagien",
+                    "Traitement laparoscopique de l'achalasie",
+                    "Approche mini-invasive de l'obésité morbide et du diabète de type II (chirurgie métabolique)"
+                ]
             },
             {
                 "title": "Minilaparoscopie",
@@ -96,16 +107,16 @@
                 "desc": "Procédure endoscopique qui permet d'évaluer le duodénum et l'ampoule de Vater à des fins diagnostiques et thérapeutiques."
             },
             {
-                "title": "CPRE",
-                "desc": "La cholangiopancréatographie rétrograde endoscopique est une procédure endoscopique utilisée dans le traitement des maladies de la voie biliaire et du canal pancrééatique."
+                "title": "Échographie Endoscopique",
+                "desc": "Étude endoscopique qui permet l'évaluation des parois de l'œsophage, de l'estomac et du duodénum, ainsi que des organes voisins (Pancréas, Voies Biliaires, Ganglions et lésions tumorales)."
             },
             {
-                "title": "Ultrason Endoscopique",
-                "desc": "Étude endoscopique qui permet de réaliser une évaluation échographique des organes intra-abdominaux à des fins diagnostiques ou thérapeutiques."
+                "title": "CPRE",
+                "desc": "Étude endoscopique permettant de diagnostiquer et de traiter les maladies des voies biliaires et pancréatiques."
             },
             {
                 "title": "Cholangioscopie",
-                "desc": "Procédure endoscopique qui permet le diagnostic et le traitement des maladies de la voie biliaire et du canal pancrééatique."
+                "desc": "Technique endoscopique permettant la visualisation directe de l'intérieur des canaux biliaires et pancréatiques pour le diagnostic et le traitement."
             },
             {
                 "title": "Entéroscopie",
@@ -116,12 +127,12 @@
                 "desc": "Étude qui consiste à ingérer un dispositif électronique sous forme de capsule qui prend des photographies de l'intestin grêle ou du côlon à des fins diagnostiques."
             },
             {
-                "title": "Ballon Intragastrique",
-                "desc": "Consiste à placer par voie endoscopique un ballon rempli d'eau pendant 1 an dans le but de favoriser la perte de poids chez le patient obèse."
+                "title": "Assistance Nutritionnelle",
+                "desc": "Mise en place endoscopique de sondes d'alimentation dans l'estomac et l'intestin grêle (jéjunum), dans le but d'administrer des médicaments et des aliments."
             },
             {
-                "title": "Assistance Nutritionnelle",
-                "desc": "Mise en place endoscopique de sondes d'alimentation dans l'estomac et l'intestin grêle (jéjunum) pour l'administration de médicaments et d'aliments."
+                "title": "Ballon Intragastrique",
+                "desc": "Consiste à placer par voie endoscopique un ballon rempli d'eau pendant 1 an dans le but de favoriser la perte de poids chez le patient obèse."
             }
         ]
     },

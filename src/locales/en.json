@@ -71,14 +71,25 @@
         "surgical_items": [
             {
                 "title": "General Surgery",
-                "desc": "Conventional surgical techniques for the treatment of prevalent diseases (hernias, ano-orificial pathology, minor surgeries)."
+                "desc": "Conventional surgical techniques for the treatment of prevalent diseases (hernias, ano-orificial pathology, minor surgeries).",
+                "features": [
+                    "Surgical treatment of hernia pathology.",
+                    "Diagnosis and treatment of ano-orificial diseases (Hemorrhoidal disease, fistulas, abscesses, fissures)",
+                    "Diagnostic laparoscopy in oncological pathology"
+                ]
             },
             {
                 "title": "Gastrointestinal Surgery",
-                "desc": "Surgical procedures at the digestive tract level through minimal incisions producing fewer scars, less pain, and a fast recovery."
+                "desc": "Surgical procedures at the digestive tract level through minimal incisions producing fewer scars, less pain, and a fast recovery.",
+                "features": [
+                    "Laparoscopic treatment of gallstone disease",
+                    "Minimally invasive treatment of Gastroesophageal Reflux Disease",
+                    "Laparoscopic treatment of Achalasia",
+                    "Minimally invasive approach for Morbid Obesity and Type II Diabetes Mellitus (Metabolic Surgery)"
+                ]
             },
             {
-                "title": "Minilaparoscopia",
+                "title": "Minilaparoscopy",
                 "desc": "Surgical technique in gastrointestinal diseases or hernia pathology using very fine instruments (3 mm) with minimal scars and a fast recovery."
             }
         ],
@@ -96,16 +107,16 @@
                 "desc": "Endoscopic procedure that allows evaluating the duodenum and the Ampulla of Vater for diagnostic and therapeutic purposes."
             },
             {
-                "title": "ERCP",
-                "desc": "Endoscopic Retrograde Cholangiopancreatography is an endoscopic procedure used in the treatment of diseases of the bile duct and pancreatic duct."
+                "title": "Endoscopic Ultrasound",
+                "desc": "Endoscopic study that allows the evaluation of the walls of the esophagus, stomach, and duodenum, as well as neighboring organs (Pancreas, Bile Ducts, Lymph Nodes, and tumor lesions)."
             },
             {
-                "title": "Endoscopic Ultrasound",
-                "desc": "Endoscopic study that allows performing a sonographic evaluation of the intra-abdominal organs for diagnostic or therapeutic purposes."
+                "title": "ERCP",
+                "desc": "Endoscopic study that allows diagnosing and treating diseases of the bile duct and pancreatic duct."
             },
             {
                 "title": "Cholangioscopy",
-                "desc": "Endoscopic procedure that allows the diagnosis and treatment of diseases of the bile duct and pancreatic duct."
+                "desc": "Endoscopic technique that allows direct visualization of the interior of the bile and pancreatic ducts for diagnosis and treatment."
             },
             {
                 "title": "Enteroscopy",
@@ -116,12 +127,12 @@
                 "desc": "Study that consists of ingesting an electronic device in the form of a capsule which takes photographs of the small intestine or colon for diagnostic purposes."
             },
             {
-                "title": "Intragastric Balloon",
-                "desc": "Consists of endoscopically placing a water-filled balloon for 1 year with the aim of promoting weight loss in the obese patient."
+                "title": "Nutritional Assistance",
+                "desc": "Endoscopic placement of feeding tubes in the stomach and small intestine (jejunum), with the aim of administering medications and food."
             },
             {
-                "title": "Nutritional Assistance",
-                "desc": "Endoscopic placement of feeding tubes in the stomach and small intestine (jejunum) for the administration of medications and food."
+                "title": "Intragastric Balloon",
+                "desc": "Consists of endoscopically placing a water-filled balloon for 1 year with the aim of promoting weight loss in the obese patient."
             }
         ]
     },

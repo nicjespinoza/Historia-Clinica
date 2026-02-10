@@ -71,11 +71,22 @@
         "surgical_items": [
             {
                 "title": "Cirugía General",
-                "desc": "Técnicas quirúrgicas convencionales para el tratamiento de enfermedades prevalentes (hernias, patología ano-orificial, cirugías menores)."
+                "desc": "Técnicas quirúrgicas convencionales para el tratamiento de enfermedades prevalentes (hernias, patología ano-orificial, cirugías menores).",
+                "features": [
+                    "Tratamiento quirúrgico de patología herniaria.",
+                    "Diagnóstico y tratamiento de las enfermedades anorificiales (Enfermedad hemorroidal, fístulas, abscesos, fisuras)",
+                    "Laparoscopia diagnostica en patología oncológica"
+                ]
             },
             {
                 "title": "Cirugía Gastrointestinal",
-                "desc": "Procedimientos quirúrgicos a nivel del tracto digestivo a través de incisiones mínimas produciendo menos cicatrices, menos dolor y una rápida recuperación."
+                "desc": "Procedimientos quirúrgicos a nivel del tracto digestivo a través de incisiones mínimas produciendo menos cicatrices, menos dolor y una rápida recuperación.",
+                "features": [
+                    "Tratamiento laparoscópico de la litiasis vesicular",
+                    "Tratamiento Mínimamente invasivo de la Enfermedad por Reflujo gastroesofágico",
+                    "Tratamiento laparoscópico de la Acalasia",
+                    "Abordaje mínimamente invasivo de la obesidad Mórbida y la Diabetes Mellitus Tipo II (Cirugía Metabólica)"
+                ]
             },
             {
                 "title": "Minilaparoscopia",
@@ -96,16 +107,16 @@
                 "desc": "Procedimiento endoscópico que permite evaluar el duodeno y la Ampolla de Vater con fines diagnósticos y terapéuticos."
             },
             {
-                "title": "CPRE",
-                "desc": "La Colangiopancreatografía Endoscópica Retrograda es un procedimiento endoscópico empleado en el tratamiento de las enfermedades de la vía biliar y el conducto pancreático."
+                "title": "Ultrasonido Endoscópico",
+                "desc": "Estudio endoscópico que permite la evaluación de las paredes del esófago, estómago y duodeno, así como de órganos vecinos (Páncreas, Vías Biliares, Ganglios y lesiones tumorales)."
             },
             {
-                "title": "Ultrasonido Endoscópico",
-                "desc": "Estudio endoscópico que permite realizar una evaluación zonográfica de los órganos intrabdominales con fines diagnósticos o terapéuticos."
+                "title": "CPRE",
+                "desc": "Estudio endoscópico que permite diagnosticar y tratar enfermedades de la vía biliar y pancreática."
             },
             {
                 "title": "Colangioscopia",
-                "desc": "Procedimiento endoscópico que permite el diagnóstico y tratamiento de las enfermedades la vía biliar y el conducto pancreático."
+                "desc": "Técnica endoscópica que permite la visualización directa del interior de los conductos biliares y pancreáticos para diagnóstico y tratamiento."
             },
             {
                 "title": "Enteroscopia",
@@ -116,12 +127,12 @@
                 "desc": "Estudio que consiste en ingerir un dispositivo electrónico con forma de cápsula el cual toma fotografías del intestino delgado o del colon con fines diagnósticos."
             },
             {
-                "title": "Balón Intragástrico",
-                "desc": "Consiste en colocar por vía endoscópica un balón relleno de agua durante 1 año con el objetivo de promover la pérdida de peso en el paciente obeso."
+                "title": "Asistencia Nutricional",
+                "desc": "Colocación endoscópica de sondas de alimentación en el estómago e intestino delgado (yeyuno), con el objetivo de la administración de medicamentos y alimento."
             },
             {
-                "title": "Asistencia Nutricional",
-                "desc": "Colocación endoscópica de sondas de alimentación en el estómago e intestino delgado (yeyuno) con el objetivo de la administración de medicamentos y alimentos."
+                "title": "Balón Intragástrico",
+                "desc": "Consiste en colocar por vía endoscópica un balón relleno de agua durante 1 año con el objetivo de promover la perdida de peso en el paciente obeso."
             }
         ]
     },
