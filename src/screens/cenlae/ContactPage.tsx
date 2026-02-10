@@ -3,6 +3,7 @@ import { NavbarCenlae } from './NavbarCenlae';
 import { FooterCenlae } from './FooterCenlae';
 import { useTranslation } from 'react-i18next';
 import { MapPin, Navigation, Facebook, Instagram, Linkedin } from 'lucide-react';
+import { VisitorChatWidget } from '../../components/chat/VisitorChatWidget';
 
 const ContactForm = () => {
     const { t } = useTranslation();
@@ -192,13 +193,8 @@ export const ContactPage = () => {
                 </div>
             </main>
 
-            <div className="fixed bottom-6 right-6 z-50">
-                <button className="bg-[#0F4C81] hover:bg-blue-800 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-transform transform hover:scale-110">
-                    <span className="material-icons text-2xl">chat_bubble</span>
-                </button>
-            </div>
-
             <FooterCenlae />
+            <VisitorChatWidget />
         </div>
     );
 };
