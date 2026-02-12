@@ -38,7 +38,7 @@ describe('Error Handler', () => {
         });
 
         it('should classify deadline exceeded as retryable', () => {
-            const timeoutError = { code: 'deadline-exceeded', message: 'Timeout' };
+            const timeoutError = { code: 'deadline-exceeded', message: 'Deadline exceeded' };
             const result = classifyError(timeoutError);
 
             expect(result.type).toBe('firebase');

@@ -98,6 +98,65 @@ Historia-Clinica-main/
 └── tests/                 # Tests unitarios
 ```
 
+
+---
+
+## 📈 Escalabilidad y Rendimiento
+
+### Índices Compuestos
+Para optimizar consultas complejas y filtrado:
+- **Pacientes**: Índice compuesto en `lastName` (ASC) + `firstName` (ASC) para búsquedas alfabéticas rápidas.
+- **Citas**: Índice en `date` (DESC) + `patientId` para historial cronológico eficiente.
+- **Logs**: Índice `timestamp` (DESC) en `auditLogs` para revisión de seguridad reciente.
+
+### Estrategia Multi-tenant
+Si la clínica crece a múltiples sucursales con datos segregados:
+- **Nivel Lógico (Actual)**: Agregar `clinicId` a todos los documentos principales (`patients`, `appointments`). Filtrar en todas las queries.
+- **Subcolecciones (Recomendado para >5 clínicas)**: Estructurar como `/clinics/{clinicId}/patients/...`. Esto aísla datos y simplifica reglas de seguridad, pero complica reportes globales.
+
+### Monitoreo
+- **Firebase Performance Monitoring**: Activado para rastrear latencia de carga de pantallas clave (`PatientList`, `Dashboard`) y tiempos de respuesta de Cloud Functions.
+- **Alertas**: Configurar alertas en Google Cloud Console para errores 500 en Functions.
+
+### Cloud Functions: Cold Starts
+Para funciones críticas de usuario final (ej: `checkEmailAvailability` en registro):
+- Configurar `minInstances: 1` en `firebase.json` o `index.ts` para mantener una instancia "caliente".
+- *Nota: Esto incurre en costos mensuales mínimos incluso sin tráfico.*
+
+
+### Chat: Cuándo Migrar
+Firestore es excelente para chat hasta ~100k mensajes/mes. Considerar migrar a **Realtime Database** o servicio dedicado (GetStream/Twilio) si:
+- La latencia en tiempo real (<100ms) es crítica.
+- El volumen de mensajes excede 1M/mes (costos de escritura de Firestore).
+- Se requiere presencia avanzada ("escribiendo...", "en línea" con alta frecuencia).
+
+---
+
+## 💰 Optimización de Costos (Blaze)
+
+### Estrategias Implementadas
+1.  **Caché Agresivo**:
+    - Pacientes: 15 min TTL (antes 5 min).
+    - Citas: 5-10 min TTL.
+    - *Impacto*: Reducción del 40-60% en lecturas repetitivas.
+
+2.  **Escrituras en Lote (Batch Writes)**:
+    - Creación de Historia Clínica + Actualización de Paciente en una sola operación atómica.
+    - *Impacto*: Integridad de datos y menor riesgo de datos huérfanos.
+
+3.  **Compresión de Imágenes**:
+    - Compresión client-side (Canvas API) antes de subir a Storage.
+    - Formato WebP, calidad 0.8, max 1920x1080.
+    - *Impacto*: Ahorro del 50-80% en costos de almacenamiento y ancho de banda.
+
+4.  **Paginación Eficiente**:
+    - Listas de pacientes con cursor (`startAfter`).
+    - Chat limitado a últimos 30 mensajes por carga inicial.
+
+### Monitoreo Recomendado
+- Configurar **Presupuestos (Budgets)** en Google Cloud Console con alertas al 50%, 90% y 100%.
+- Revisar pestaña "Usage" en Firebase Console semanalmente para detectar picos de lecturas/escrituras.
+
 ---
 
 ## 📜 Scripts Disponibles
@@ -117,6 +176,14 @@ npm install
 npm run build
 npm run deploy
 ```
+
+---
+
+## 🛡️ Seguridad
+
+- **HTTPS**: Forzado automáticamente por Firebase Hosting para todas las conexiones.
+- **App Check**: Actualmente **DESACTIVADO** para facilitar pruebas con múltiples usuarios en producción. Se activará en una fase posterior usando reCAPTCHA Enterprise.
+- **Firestore Rules**: Roles estrictos y acceso granulado.
 
 ---
 

@@ -56,7 +56,7 @@ export const JitsiMeetModal = ({
                     script.src = `https://${JITSI_DOMAIN}/external_api.js`;
                     script.async = true;
                     script.onload = () => {
-                        console.log('Jitsi script loaded successfully');
+
                         resolve();
                     };
                     script.onerror = () => reject(new Error('No se pudo cargar el script de video'));
@@ -77,7 +77,7 @@ export const JitsiMeetModal = ({
                 jitsiApiRef.current = null;
             }
 
-            console.log('Creating Jitsi room:', cleanRoomName);
+
 
             // Create the Jitsi instance with free meet.jit.si
             jitsiApiRef.current = new window.JitsiMeetExternalAPI(JITSI_DOMAIN, {
@@ -148,21 +148,21 @@ export const JitsiMeetModal = ({
                 }
             });
 
-            console.log('JaaS API created, adding listeners...');
+
 
             // Event listeners
             jitsiApiRef.current.addListener('videoConferenceJoined', (data: any) => {
-                console.log('User joined video conference:', data);
+
                 setIsLoading(false);
             });
 
             jitsiApiRef.current.addListener('videoConferenceLeft', () => {
-                console.log('User left video conference');
+
                 onClose();
             });
 
             jitsiApiRef.current.addListener('readyToClose', () => {
-                console.log('Ready to close');
+
                 onClose();
             });
 

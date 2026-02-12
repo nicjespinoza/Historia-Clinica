@@ -14,14 +14,15 @@ import {
     Archive,
     Trash2,
     User,
-    Clock
+    Clock,
+    ChevronLeft
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export const ChatScreen = () => {
-    const { activeChats, currentChat, selectChat, messages, sendMessage, markAsRead, loading } = useChat();
+    const { activeChats, currentChat, selectChat, messages, sendMessage, markAsRead, deleteChat, loading } = useChat();
     const { currentUser } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [inputText, setInputText] = useState('');
@@ -55,10 +56,18 @@ export const ChatScreen = () => {
         }
     });
 
+    const isOnline = (chat: any) => {
+        if (!chat?.lastSeen) return false;
+        try {
+            const time = chat.lastSeen?.toDate ? chat.lastSeen.toDate().getTime() : new Date(chat.lastSeen).getTime();
+            return (Date.now() - time) < 5 * 60 * 1000;
+        } catch (e) { return false; }
+    };
+
     return (
         <div className="flex h-[calc(100vh-theme(spacing.24))] bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             {/* Sidebar - Chat List */}
-            <div className="w-80 border-r border-gray-100 flex flex-col bg-gray-50/30">
+            <div className={`w-full md:w-80 border-r border-gray-100 flex flex-col bg-gray-50/30 ${currentChat ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-gray-100 bg-white">
                     <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <MessageCircle className="text-blue-600" /> Mensajes
@@ -108,21 +117,29 @@ export const ChatScreen = () => {
                                             )}>
                                                 {chat.visitorName}
                                             </h3>
-                                            <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">
+                                            <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2 flex flex-col items-end">
                                                 {chat.lastMessageTime?.toDate ?
                                                     format(chat.lastMessageTime.toDate(), 'HH:mm', { locale: es }) :
                                                     ''}
+                                                {chat.metadata?.country && (
+                                                    <span className="mt-1 opacity-70">📍 {chat.metadata.country}</span>
+                                                )}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center">
-                                            <p className={cn(
-                                                "text-xs truncate max-w-[140px]",
-                                                chat.unreadCount > 0 ? "font-medium text-gray-800" : "text-gray-500"
-                                            )}>
-                                                {chat.lastMessage}
-                                            </p>
+                                            <div className="flex-1 truncate">
+                                                <p className={cn(
+                                                    "text-xs truncate",
+                                                    chat.unreadCount > 0 ? "font-medium text-gray-800" : "text-gray-500"
+                                                )}>
+                                                    {chat.lastMessage}
+                                                </p>
+                                                {chat.isRegistered && (
+                                                    <span className="inline-block bg-green-100 text-green-700 text-[8px] font-bold px-1 rounded mt-0.5">PACIENTE REGISTRADO</span>
+                                                )}
+                                            </div>
                                             {chat.unreadCount > 0 && (
-                                                <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                                <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ml-2">
                                                     {chat.unreadCount}
                                                 </span>
                                             )}
@@ -136,28 +153,62 @@ export const ChatScreen = () => {
             </div>
 
             {/* Main Chat Area */}
-            <div className="flex-1 flex flex-col bg-white">
+            <div className={`flex-1 flex flex-col bg-white ${currentChat ? 'flex fixed inset-0 z-50 md:static md:z-auto' : 'hidden md:flex'}`}>
                 {currentChat ? (
                     <>
                         {/* Header */}
                         <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white z-10">
                             <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => selectChat(null)}
+                                    className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full"
+                                >
+                                    <ChevronLeft size={24} />
+                                </button>
                                 <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
                                     <User size={20} />
                                 </div>
                                 <div>
-                                    <h2 className="font-bold text-gray-800">{currentChat.visitorName}</h2>
-                                    <div className="flex items-center gap-2 text-xs text-green-600">
-                                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                                        Visitante Activo
+                                    <h2 className="font-bold text-gray-800 flex items-center gap-2">
+                                        {currentChat.visitorName}
+                                        {currentChat.isRegistered && (
+                                            <CheckCheck size={14} className="text-blue-500" />
+                                        )}
+                                    </h2>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
+                                        <div className="flex items-center gap-1 text-green-600 font-medium">
+                                            <span className={`w-1.5 h-1.5 rounded-full ${isOnline(currentChat) ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                                            {isOnline(currentChat) ? 'Conectado' : 'Desconectado'}
+                                        </div>
+                                        {currentChat.metadata?.ip && (
+                                            <span className="text-gray-400 border-l border-gray-200 pl-2">
+                                                IP: {currentChat.metadata.ip}
+                                            </span>
+                                        )}
+                                        {currentChat.metadata?.city && (
+                                            <span className="text-gray-400 border-l border-gray-200 pl-2">
+                                                {currentChat.metadata.city}, {currentChat.metadata.country}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
-                                <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Archivar">
+                                <button
+                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Archivar"
+                                >
                                     <Archive size={20} />
                                 </button>
-                                <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
+                                <button
+                                    onClick={() => {
+                                        if (confirm('¿Estás seguro de que deseas eliminar este chat? Esta acción no se puede deshacer.')) {
+                                            deleteChat(currentChat.id);
+                                        }
+                                    }}
+                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Eliminar"
+                                >
                                     <Trash2 size={20} />
                                 </button>
                             </div>

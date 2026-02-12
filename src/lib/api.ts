@@ -18,7 +18,8 @@ import {
     Timestamp,
     QueryDocumentSnapshot,
     onSnapshot,
-    Unsubscribe
+    Unsubscribe,
+    writeBatch
 } from 'firebase/firestore';
 import { firestoreCache, PAGE_SIZES, PaginatedResult } from './cache';
 
@@ -90,13 +91,20 @@ export const api = {
      */
     getPatients: async (): Promise<Patient[]> => {
         return firestoreCache.getOrFetch(
-            'patients:all_v3', // Cache busted for sort order
+            'patients:all_v4', // Cache busted
             async () => {
-                const q = query(collection(db, 'patients'), orderBy('createdAt', 'desc'));
-                const snapshot = await getDocs(q);
-                return snapshot.docs.map(d => docToData<Patient>(d));
+                // No orderBy = no index needed = faster cold start
+                const snapshot = await getDocs(collection(db, 'patients'));
+                const data = snapshot.docs.map(d => docToData<Patient>(d));
+                // Sort client-side (instant for <1000 docs)
+                data.sort((a, b) => {
+                    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    return dateB - dateA;
+                });
+                return data;
             },
-            5 * 60 * 1000
+            15 * 60 * 1000
         );
     },
 
@@ -106,11 +114,15 @@ export const api = {
      * @returns Unsubscribe function
      */
     subscribeToPatients: (onUpdate: (patients: Patient[]) => void): Unsubscribe => {
-        const q = query(collection(db, 'patients'), orderBy('createdAt', 'desc'));
-        return onSnapshot(q, (snapshot) => {
+        return onSnapshot(collection(db, 'patients'), (snapshot) => {
             const patients = snapshot.docs.map(d => docToData<Patient>(d));
+            patients.sort((a, b) => {
+                const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return dateB - dateA;
+            });
             // Update cache silently to keep it fresh
-            firestoreCache.set('patients:all_v3', patients, 5 * 60 * 1000);
+            firestoreCache.set('patients:all_v4', patients, 15 * 60 * 1000);
             onUpdate(patients);
         }, (error) => {
             console.error("Error subscribing to patients:", error);
@@ -123,21 +135,45 @@ export const api = {
      */
     getPatientsPaginated: async (
         pageSize: number = PAGE_SIZES.patients,
-        lastDoc?: QueryDocumentSnapshot
+        lastDoc?: QueryDocumentSnapshot,
+        statuses?: string[]
     ): Promise<PaginatedResult<Patient>> => {
-        let q = query(
-            collection(db, 'patients'),
-            orderBy('createdAt', 'desc'),
-            limit(pageSize + 1) // Fetch one extra to check if more exist
-        );
+        let q;
 
-        if (lastDoc) {
+        if (statuses && statuses.length > 0) {
+            // If statuses are provided, filter by them
+            q = query(
+                collection(db, 'patients'),
+                where('registrationStatus', 'in', statuses),
+                orderBy('createdAt', 'desc'),
+                limit(pageSize + 1)
+            );
+
+            if (lastDoc) {
+                q = query(
+                    collection(db, 'patients'),
+                    where('registrationStatus', 'in', statuses),
+                    orderBy('createdAt', 'desc'),
+                    startAfter(lastDoc),
+                    limit(pageSize + 1)
+                );
+            }
+        } else {
+            // Default behavior
             q = query(
                 collection(db, 'patients'),
                 orderBy('createdAt', 'desc'),
-                startAfter(lastDoc),
                 limit(pageSize + 1)
             );
+
+            if (lastDoc) {
+                q = query(
+                    collection(db, 'patients'),
+                    orderBy('createdAt', 'desc'),
+                    startAfter(lastDoc),
+                    limit(pageSize + 1)
+                );
+            }
         }
 
         const snapshot = await getDocs(q);
@@ -212,26 +248,17 @@ export const api = {
         const subcollections = ['histories', 'consults', 'observations', 'snapshots'];
         for (const subCol of subcollections) {
             const subDocs = await getDocs(collection(db, 'patients', id, subCol));
-            const batch = import('firebase/firestore').then(mod => { // Lazy load writeBatch if needed or use db.batch()
-                // Note: we can't use db.batch() directly inside a loop easily if > 500 docs, 
-                // but for individual patient cleanup it's likely fine.
-                // safe approach: delete one by one or small batches.
-                const b = mod.writeBatch(db);
-                subDocs.docs.forEach(d => b.delete(d.ref));
-                return b.commit();
-            });
-            await batch;
+            const batch = writeBatch(db);
+            subDocs.docs.forEach(d => batch.delete(d.ref));
+            await batch.commit();
         }
 
         // 2. Delete Related Appointments
         const appointmentsQ = query(collection(db, 'appointments'), where('patientId', '==', id));
         const appointmentsSnap = await getDocs(appointmentsQ);
-        const batchAppt = import('firebase/firestore').then(mod => {
-            const b = mod.writeBatch(db);
-            appointmentsSnap.docs.forEach(d => b.delete(d.ref));
-            return b.commit();
-        });
-        await batchAppt;
+        const batchAppt = writeBatch(db);
+        appointmentsSnap.docs.forEach(d => batchAppt.delete(d.ref));
+        await batchAppt.commit();
 
         // 3. Delete Patient Doc
         await deleteDoc(patientRef);
@@ -284,14 +311,39 @@ export const api = {
             return combined;
         }
 
-        // If no patientId, get all histories (expensive, mainly for dev/debug)
-        const patientsSnapshot = await getDocs(collection(db, 'patients'));
-        const allHistories: InitialHistory[] = [];
-        for (const patientDoc of patientsSnapshot.docs) {
-            const historiesSnapshot = await getDocs(collection(db, 'patients', patientDoc.id, 'histories'));
-            allHistories.push(...historiesSnapshot.docs.map(doc => docToData<InitialHistory>(doc)));
-        }
-        return allHistories;
+        // For all histories, use getAllHistoriesFlat() instead (optimized for reports)
+        return api.getAllHistoriesFlat();
+    },
+
+    /**
+     * OPTIMIZED: Get all histories from root 'initialHistories' collection (1 query).
+     * This is the fast path for reports - reads migrated data directly.
+     * Cached for 15 minutes.
+     */
+    getAllHistoriesFlat: async (): Promise<InitialHistory[]> => {
+        return firestoreCache.getOrFetch(
+            'histories:all_flat_v1',
+            async () => {
+                const snapshot = await getDocs(collection(db, 'initialHistories'));
+                return snapshot.docs.map(doc => docToData<InitialHistory>(doc));
+            },
+            15 * 60 * 1000
+        );
+    },
+
+    /**
+     * OPTIMIZED: Get all consults from root 'subsequentConsults' collection (1 query).
+     * Cached for 15 minutes.
+     */
+    getAllConsultsFlat: async (): Promise<SubsequentConsult[]> => {
+        return firestoreCache.getOrFetch(
+            'consults:all_flat_v1',
+            async () => {
+                const snapshot = await getDocs(collection(db, 'subsequentConsults'));
+                return snapshot.docs.map(doc => docToData<SubsequentConsult>(doc));
+            },
+            15 * 60 * 1000
+        );
     },
 
     createHistory: async (data: Omit<InitialHistory, 'id'>): Promise<InitialHistory> => {
@@ -307,20 +359,37 @@ export const api = {
             }
         }
 
-        // Always save new histories to the subcollection
-        const docRef = await addDoc(collection(db, 'patients', data.patientId, 'histories'), data);
-        // Wrap audit in try-catch to ensure main action succeeds even if audit fails/queues weirdly
+        // Use batch write to create history AND update patient stats
+        const batch = writeBatch(db);
+
+        // 1. History Doc Ref
+        const historiesRef = collection(db, 'patients', data.patientId, 'histories');
+        const newHistoryRef = doc(historiesRef); // auto-id
+
+        // 2. Add History to Batch
+        batch.set(newHistoryRef, data);
+
+        // 3. Update Patient "lastHistoryDate" to Batch
+        const patientRef = doc(db, 'patients', data.patientId);
+        batch.update(patientRef, {
+            lastHistoryDate: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        });
+
+        // 4. Commit Batch
+        await batch.commit();
+
         try {
             await logAudit({
                 action: 'CREATE_HISTORY',
                 details: `Created history for patient ${data.patientId}`,
-                targetId: docRef.id,
+                targetId: newHistoryRef.id,
                 metadata: { patientId: data.patientId }
             });
         } catch (e) {
             console.warn("Offline: Audit log queued or failed", e);
         }
-        return { id: docRef.id, ...data } as InitialHistory;
+        return { id: newHistoryRef.id, ...data } as InitialHistory;
     },
 
     updateHistory: async (id: string, data: Partial<InitialHistory>): Promise<InitialHistory> => {

@@ -7,6 +7,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret, defineString } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import * as crypto from "crypto";
+import * as logger from "firebase-functions/logger";
 
 // Secrets
 const tilopayApiKey = defineSecret("TILOPAY_API_KEY");
@@ -51,6 +52,11 @@ interface TiloPayResponse {
     raw?: any;
 }
 
+// Helper to mask PAN
+function maskPan(pan: string): string {
+    return pan.slice(0, 6) + "******" + pan.slice(-4);
+}
+
 /**
  * Process payment directly with TiloPay using S2S
  */
@@ -62,15 +68,39 @@ export const processTiloPayPayment = onCall(
     async (request): Promise<TiloPayResponse> => {
         // 1. Authentication Check
         if (!request.auth) {
+            logger.warn("Unauthenticated TiloPay attempt");
             throw new HttpsError("unauthenticated", "User must be logged in");
         }
 
         const data = request.data as TiloPayRequest;
         const { amount, currency, orderId, cardDetails, clientDetails } = data;
 
-        // 2. Validate Data
-        if (!amount || !currency || !orderId || !cardDetails || !clientDetails) {
-            throw new HttpsError("invalid-argument", "Missing required payment fields");
+        // 2. Strict Input Validation
+        if (!amount || typeof amount !== 'number' || amount <= 0) {
+            throw new HttpsError("invalid-argument", "Invalid amount");
+        }
+        if (!currency || !/^[A-Z]{3}$/.test(currency)) {
+            throw new HttpsError("invalid-argument", "Invalid currency currency code (3 letters required)");
+        }
+        if (!orderId || typeof orderId !== 'string') {
+            throw new HttpsError("invalid-argument", "Invalid orderId");
+        }
+
+        // Card validation
+        if (!cardDetails || typeof cardDetails !== 'object') {
+            throw new HttpsError("invalid-argument", "Missing card details");
+        }
+        const pan = (cardDetails.pan || "").replace(/\s/g, "");
+        if (!/^\d{13,19}$/.test(pan)) {
+            throw new HttpsError("invalid-argument", "Invalid card number");
+        }
+        if (!/^\d{3,4}$/.test(cardDetails.cvv)) {
+            throw new HttpsError("invalid-argument", "Invalid CVV");
+        }
+
+        // Client validation (basic)
+        if (!clientDetails || !clientDetails.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientDetails.email)) {
+            throw new HttpsError("invalid-argument", "Invalid client email");
         }
 
         const apiKey = tilopayApiKey.value();
@@ -79,33 +109,20 @@ export const processTiloPayPayment = onCall(
         const environment = tilopayEnv.value();
 
         if (!apiKey || !apiUser || !apiPassword) {
-            throw new HttpsError("failed-precondition", "TiloPay credentials not configured");
+            logger.error("TiloPay credentials missing");
+            throw new HttpsError("failed-precondition", "Payment provider not configured");
         }
 
-        // 3. Format Data for TiloPay
-        // Ensure currency is numeric string if required, but TiloPay usually takes 3-letter code like 'USD' or 'NIO' in some endpoints.
-        // However, standard ISO 4217 numeric is safer for banking APIs. 
-        // Let's assume the user sends 'USD' or 'NIO' and we convert if needed, 
-        // OR we send as is if TiloPay accepts it. The prompt mentions "Códigos de Moneda: Asegúrate de enviar el estándar correcto".
-        // Common TiloPay: 'USD', 'NIO'.
-
-        // Clean card data
-        const pan = cardDetails.pan.replace(/\s/g, "");
-        const cvv = cardDetails.cvv.trim();
-
-        // Format Year: TiloPay often expects 2 digits.
+        // Format Date
         const expYear = cardDetails.expYear.length === 4 ? cardDetails.expYear.slice(-2) : cardDetails.expYear;
         const expMonth = cardDetails.expMonth.padStart(2, '0');
 
         // 4. Generate Hash
-        // Formula often used: SHA256(KEY + ORDER + AMOUNT)
-        // Note: Amount usually needs to be formatted (e.g., "100.00" or simple "100" depending on API).
-        // We will assume standard string concatenation.
+        // Formula: SHA256(KEY + ORDER + AMOUNT)
         const hashString = `${apiKey}${orderId}${amount}`;
         const hash = crypto.createHash('sha256').update(hashString).digest('hex');
 
         // 5. Construct Payload
-        // Based on typical TiloPay S2S structure
         const payload = {
             key: apiKey,
             hash: hash,
@@ -116,7 +133,7 @@ export const processTiloPayPayment = onCall(
             capture: true, // Auto-capture
             card: {
                 number: pan,
-                cvv: cvv,
+                cvv: cardDetails.cvv,
                 expire_month: expMonth,
                 expire_year: expYear
             },
@@ -134,15 +151,21 @@ export const processTiloPayPayment = onCall(
         };
 
         // 6. Send Request
-        // URL depends on environment
         const tilopayApiUrl = environment === 'production'
             ? 'https://app.tilopay.com/api/v1/process'
-            : 'https://sandbox.tilopay.com/api/v1/process'; // Adjust sandbox URL if needed
+            : 'https://sandbox.tilopay.com/api/v1/process';
+
+        logger.info("Initiating TiloPay Request", {
+            orderId,
+            amount,
+            currency,
+            environment,
+            userId: request.auth.uid,
+            cardLast4: pan.slice(-4)
+        });
 
         try {
             const authHeader = "Basic " + Buffer.from(`${apiUser}:${apiPassword}`).toString("base64");
-
-            console.log(`Sending payment request to TiloPay (${environment}):`, { orderId, amount, currency });
 
             const response = await fetch(tilopayApiUrl, {
                 method: 'POST',
@@ -155,30 +178,35 @@ export const processTiloPayPayment = onCall(
 
             const result = await response.json();
 
-            console.log('TiloPay Response:', result);
+            logger.info("TiloPay Response", {
+                orderId,
+                status: result.status,
+                responseCode: result.response_code,
+                hasRedirect: !!result.redirect_url
+            });
 
             // 7. Handle Response
-            // Identify standard TiloPay response codes
 
             // Case A: Success (Direct)
             if (result.status === 'success' || result.response_code === '100') {
-                // Update Firestore with idempotency check
                 if (data.appointmentId) {
-                    // IDEMPOTENCIA: Verificar si ya está pagado antes de actualizar
+                    // Idempotency Check
                     const appointmentRef = admin.firestore().collection('appointments').doc(data.appointmentId);
-                    const appointmentDoc = await appointmentRef.get();
 
-                    if (appointmentDoc.exists && appointmentDoc.data()?.paymentStatus === 'paid') {
-                        console.log(`Payment already processed for appointment ${data.appointmentId}, skipping update`);
-                    } else {
-                        await appointmentRef.update({
-                            paid: true,
-                            paymentStatus: 'paid',
-                            paymentGateway: 'tilopay',
-                            paymentTransactionId: result.transaction_id || orderId,
-                            paidAt: admin.firestore.FieldValue.serverTimestamp()
-                        });
-                    }
+                    await admin.firestore().runTransaction(async (transaction) => {
+                        const appointmentDoc = await transaction.get(appointmentRef);
+                        if (appointmentDoc.exists && appointmentDoc.data()?.paymentStatus === 'paid') {
+                            logger.info("Payment idempotency check: already paid");
+                        } else {
+                            transaction.update(appointmentRef, {
+                                paid: true,
+                                paymentStatus: 'paid',
+                                paymentGateway: 'tilopay',
+                                paymentTransactionId: result.transaction_id || orderId,
+                                paidAt: admin.firestore.FieldValue.serverTimestamp()
+                            });
+                        }
+                    });
                 }
 
                 return {
@@ -189,7 +217,6 @@ export const processTiloPayPayment = onCall(
             }
 
             // Case B: 3D Secure Redirect Required
-            // TiloPay usually returns a specific code or url for 3DS
             if (result.redirect_url || result.status === 'redirect') {
                 return {
                     success: false,
@@ -200,6 +227,11 @@ export const processTiloPayPayment = onCall(
             }
 
             // Case C: Error/Declined
+            logger.warn("TiloPay Declined", {
+                orderId,
+                error: result.error_message || result.message
+            });
+
             return {
                 success: false,
                 error: true,
@@ -207,8 +239,8 @@ export const processTiloPayPayment = onCall(
             };
 
         } catch (error: any) {
-            console.error('TiloPay internal error:', error);
-            throw new HttpsError('internal', `Error connecting to TiloPay: ${error.message}`);
+            logger.error('TiloPay Internal Error', { error: error.message, orderId });
+            throw new HttpsError('internal', "Error procesando el pago con TiloPay");
         }
     }
 );

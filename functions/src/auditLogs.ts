@@ -33,7 +33,9 @@ export type AuditAction =
     | "TOKEN_REFRESHED"
     | "PAYMENT_INITIATED"
     | "PAYMENT_COMPLETED"
-    | "PAYMENT_FAILED";
+    | "PAYMENT_FAILED"
+    | "CHAT_CREATED"
+    | "MESSAGE_SENT";
 
 export interface AuditLogEntry {
     action: AuditAction;

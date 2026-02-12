@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavbarCenlae } from './NavbarCenlae';
 import { FooterCenlae } from './FooterCenlae';
-import { VisitorChatWidget } from '../../components/chat/VisitorChatWidget';
+
 
 export const EndoscopicProceduresPage = () => {
     const { t } = useTranslation();
@@ -178,7 +178,7 @@ export const EndoscopicProceduresPage = () => {
 
 
             <FooterCenlae />
-            <VisitorChatWidget />
+
         </div>
     );
 };

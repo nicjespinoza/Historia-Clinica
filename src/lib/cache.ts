@@ -17,7 +17,7 @@ interface CacheEntry<T> {
 
 class FirestoreCache {
     private cache = new Map<string, CacheEntry<any>>();
-    private defaultTTL = 5 * 60 * 1000; // 5 minutes default
+    private defaultTTL = 15 * 60 * 1000; // 15 minutes default (Cost Optimization)
 
     /**
      * Get cached data or fetch from Firestore
@@ -120,11 +120,11 @@ export interface PaginatedResult<T> {
  * Default page sizes for different collections
  */
 export const PAGE_SIZES = {
-    patients: 20,
-    appointments: 30,
+    patients: 40,      // Increased to reduce queries
+    appointments: 50,  // Increased for better initial view
     histories: 10,
     consults: 10,
-    messages: 50
+    messages: 30       // Reduced from implied 50/100 to save bandwidth on initial load
 } as const;
 
 // ============================================================
@@ -198,7 +198,7 @@ export const compressImage = async (
                             { type: `image/${opts.format}` }
                         );
 
-                        console.log(`📸 Image compressed: ${formatBytes(file.size)} → ${formatBytes(compressedFile.size)} (${Math.round((1 - compressedFile.size / file.size) * 100)}% savings)`);
+
 
                         resolve(compressedFile);
                     } else {

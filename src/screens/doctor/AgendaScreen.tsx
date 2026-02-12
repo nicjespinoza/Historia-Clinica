@@ -8,6 +8,9 @@ import { FloatingLabelInput } from '../../components/premium-ui/FloatingLabelInp
 import { FloatingLabelSelect } from '../../components/premium-ui/FloatingLabelSelect';
 import { Autocomplete } from '../../components/premium-ui/Autocomplete';
 import { WeeklyCalendar } from './WeeklyCalendar';
+import { PageTransition } from '../../components/ui/PageTransition';
+import { Modal } from '../../components/ui/Modal';
+import { toast } from 'sonner';
 
 // Available time slots for appointments (60 min intervals)
 // Each appointment blocks 60 minutes of doctor's time
@@ -46,7 +49,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
             const lastDay = new Date(year, month, 0).getDate();
             const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-            console.log(`Fetching appointments from ${startDate} to ${endDate}`);
+
 
             const apps = await api.getAppointmentsByDateRange(startDate, endDate);
 
@@ -195,21 +198,21 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
 
     // Handle new appointment creation
     const handleCreateAppointment = async () => {
-        // Validate required fields based on type
         if (!newAppointment.date || !newAppointment.time || !newAppointment.reason) {
-            alert('Por favor complete todos los campos');
+            toast.error('Por favor complete todos los campos');
             return;
         }
 
         // Patient ID is required only for non-blocked appointments
         if (newAppointment.type !== 'bloqueo' && !newAppointment.patientId) {
-            alert('Por favor seleccione un paciente');
+            toast.error('Por favor seleccione un paciente');
             return;
         }
 
         // Check for conflicts
         if (checkTimeConflict(newAppointment.date, newAppointment.time)) {
             setConflictWarning('Ya existe una cita o bloqueo para esta fecha y hora');
+            toast.warning('Conflicto de horario detectado');
             return;
         }
 
@@ -226,10 +229,10 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
             setShowNewAppointmentModal(false);
             setNewAppointment({ patientId: '', date: '', time: '', type: 'presencial', reason: '' });
             setConflictWarning(null);
-            alert(newAppointment.type === 'bloqueo' ? 'Horario bloqueado exitosamente' : 'Cita creada exitosamente');
+            toast.success(newAppointment.type === 'bloqueo' ? 'Horario bloqueado exitosamente' : 'Cita creada exitosamente');
         } catch (error) {
             console.error('Error creating appointment:', error);
-            alert('Error al crear la cita');
+            toast.error('Error al crear la cita');
         } finally {
             setIsSaving(false);
         }
@@ -256,10 +259,10 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
             });
             setAppointments(prev => prev.map(a => a.id === editingAppointment.id ? editingAppointment : a));
             setEditingAppointment(null);
-            alert('Cita actualizada con éxito');
+            toast.success('Cita actualizada con éxito');
         } catch (error) {
             console.error("Error updating appointment:", error);
-            alert("Error al actualizar la cita");
+            toast.error("Error al actualizar la cita");
         } finally {
             setIsSaving(false);
         }
@@ -271,12 +274,13 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
             try {
                 await api.deleteAppointment(id);
                 setAppointments(prev => prev.filter(a => a.id !== id));
+                toast.success('Cita eliminada');
             } catch (error: any) {
                 console.error("Error deleting appointment:", error);
                 if (error.code === 'permission-denied') {
-                    alert("Error: Permisos insuficientes para eliminar. Verifique las reglas de seguridad de Firebase.");
+                    toast.error("Permisos insuficientes para eliminar.");
                 } else {
-                    alert("Error al eliminar la cita: " + error.message);
+                    toast.error("Error al eliminar la cita: " + error.message);
                 }
             }
         }
@@ -290,9 +294,10 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
             setAppointments(prev => prev.map(a =>
                 a.id === id ? { ...a, confirmed: true } : a
             ));
+            toast.success('Cita confirmada');
         } catch (error) {
             console.error("Error confirming appointment:", error);
-            alert("Error al confirmar la cita");
+            toast.error("Error al confirmar la cita");
         }
     };
 
@@ -303,6 +308,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
             setAppointments(prev => prev.map(a =>
                 a.id === id ? { ...a, confirmed: true } : a
             ));
+            toast.success('Cita marcada como completada');
             // Navigate to create new consult for follow-up
             if (window.confirm('¿Desea crear una consulta de seguimiento para este paciente?')) {
                 window.location.href = `/app/createsubsecuente/${patientId}`;
@@ -322,10 +328,10 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
             try {
                 await api.deleteAppointment(id);
                 setAppointments(prev => prev.filter(a => a.id !== id));
-                alert('Cita cancelada exitosamente');
+                toast.success('Cita cancelada exitosamente');
             } catch (error) {
                 console.error("Error canceling appointment:", error);
-                alert("Error al cancelar la cita");
+                toast.error("Error al cancelar la cita");
             }
         }
     };
@@ -377,7 +383,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
     };
 
     return (
-        <div className="min-h-screen font-sans bg-gradient-to-br from-[#083c79] via-[#0a4d8c] to-[#062d5a]">
+        <PageTransition className="min-h-screen font-sans bg-gradient-to-br from-[#083c79] via-[#0a4d8c] to-[#062d5a]">
             {/* Decorative background elements */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -mr-48 -mt-48"></div>
@@ -401,10 +407,10 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                             </div>
                         </div>
 
-                        {/* Stats Section */}
-                        <div className="flex flex-wrap items-center gap-3">
+                        {/* Stats Section - Scrollable on mobile */}
+                        <div className="flex flex-nowrap md:flex-wrap items-center gap-3 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto scrollbar-hide snap-x">
                             {/* Today's Count */}
-                            <div className="flex items-center gap-3 bg-white/15 backdrop-blur-sm px-5 py-3 rounded-2xl border border-white/20 shadow-lg hover:bg-white/20 transition-all">
+                            <div className="flex-none snap-center flex items-center gap-3 bg-white/15 backdrop-blur-sm px-5 py-3 rounded-2xl border border-white/20 shadow-lg min-w-[140px]">
                                 <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
                                     <Users className="w-5 h-5 text-white" />
                                 </div>
@@ -415,7 +421,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                             </div>
 
                             {/* Confirmed */}
-                            <div className="flex items-center gap-3 bg-green-500/20 backdrop-blur-sm px-5 py-3 rounded-2xl border border-green-400/30 shadow-lg hover:bg-green-500/30 transition-all">
+                            <div className="flex-none snap-center flex items-center gap-3 bg-green-500/20 backdrop-blur-sm px-5 py-3 rounded-2xl border border-green-400/30 shadow-lg min-w-[140px]">
                                 <div className="w-10 h-10 rounded-xl bg-green-500/30 flex items-center justify-center">
                                     <CheckCircle className="w-5 h-5 text-green-300" />
                                 </div>
@@ -426,7 +432,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                             </div>
 
                             {/* Virtual */}
-                            <div className="flex items-center gap-3 bg-purple-500/20 backdrop-blur-sm px-5 py-3 rounded-2xl border border-purple-400/30 shadow-lg hover:bg-purple-500/30 transition-all">
+                            <div className="flex-none snap-center flex items-center gap-3 bg-purple-500/20 backdrop-blur-sm px-5 py-3 rounded-2xl border border-purple-400/30 shadow-lg min-w-[140px]">
                                 <div className="w-10 h-10 rounded-xl bg-purple-500/30 flex items-center justify-center">
                                     <Video className="w-5 h-5 text-purple-300" />
                                 </div>
@@ -436,10 +442,10 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                                 </div>
                             </div>
 
-                            {/* New Appointment Button */}
+                            {/* New Appointment Button - Fixed or standard */}
                             <button
                                 onClick={() => setShowNewAppointmentModal(true)}
-                                className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-3.5 rounded-2xl font-bold transition-all shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:scale-[1.02] active:scale-[0.98]"
+                                className="flex-none snap-center flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-3.5 rounded-2xl font-bold transition-all shadow-lg shadow-green-500/30 whitespace-nowrap"
                             >
                                 <Plus className="w-5 h-5" />
                                 <span>Nueva Cita</span>
@@ -735,117 +741,140 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
             </div>
 
             {/* Day Details Modal */}
-            {selectedDayAppointments && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <GlassCard className="w-full max-w-lg p-0 overflow-hidden shadow-2xl">
-                        <div className="bg-[#083c79] p-6 flex justify-between items-center text-white">
-                            <h3 className="text-xl font-bold">Citas del Día</h3>
-                            <button onClick={() => setSelectedDayAppointments(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
+            <Modal
+                isOpen={!!selectedDayAppointments}
+                onClose={() => setSelectedDayAppointments(null)}
+                title={
+                    <div className="flex items-center gap-3">
+                        <div className="bg-[#083c79]/10 p-2 rounded-lg text-[#083c79]">
+                            <Clock size={20} />
                         </div>
-                        <div className="p-6 max-h-[60vh] overflow-y-auto space-y-3 bg-gray-50">
-                            {selectedDayAppointments.map(apt => {
-                                const patient = patients.find(p => p.id === apt.patientId);
-                                return (
-                                    <div key={apt.id} className="flex items-center p-3 bg-white rounded-xl border border-gray-200 shadow-sm hover:border-[#083c79] transition-colors group">
-                                        <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold mr-3 shrink-0 text-sm ${(apt.type === 'bloqueo' || apt.type === 'cirugia') ? (apt.type === 'cirugia' ? 'bg-red-500' : 'bg-gray-400') : 'bg-[#083c79]'}`}>
-                                            {(apt.type === 'bloqueo' || apt.type === 'cirugia')
-                                                ? (apt.type === 'bloqueo' ? <Clock size={16} /> : <AlertTriangle size={16} />)
-                                                : (patient ? patient.firstName.charAt(0) : '?')
-                                            }
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-bold text-gray-900 truncate text-sm">
-                                                {(apt.type === 'bloqueo' || apt.type === 'cirugia')
-                                                    ? (apt.type === 'bloqueo' ? 'BLOQUEADO' : 'CIRUGÍA')
-                                                    : (patient ? `${patient.firstName} ${patient.lastName}` : 'Desconocido')
-                                                }
-                                            </h4>
-                                            <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
-                                                <span className="font-mono bg-[#083c79]/5 text-[#083c79] px-1.5 py-0.5 rounded font-bold">{apt.time}</span>
-                                                <span className="truncate">{apt.reason}</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            {apt.patientId && apt.type !== 'bloqueo' && apt.type !== 'cirugia' && (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); navigate(`/app/profile/${apt.patientId}`); }}
-                                                    className="p-1.5 text-[#083c79] hover:bg-blue-50 rounded-full transition-colors"
-                                                    title="Ver Perfil"
-                                                >
-                                                    <Eye size={16} />
-                                                </button>
-                                            )}
-                                            <button onClick={(e) => handleEditAppointment(apt.id, e)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"><Edit2 size={16} /></button>
-                                            <button onClick={(e) => handleDeleteAppointment(apt.id, e)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-full transition-colors"><Trash2 size={16} /></button>
-                                        </div>
+                        <div>
+                            <span>Citas del Día</span>
+                            {selectedDayFormatted && <p className="text-sm font-normal text-gray-500 capitalize mt-0.5">{selectedDayFormatted}</p>}
+                        </div>
+                    </div>
+                }
+                className="max-w-lg"
+            >
+                <div className="space-y-3">
+                    {selectedDayAppointments?.map((apt) => {
+                        const patient = patients.find(p => p.id === apt.patientId);
+                        return (
+                            <div key={apt.id} className="flex items-center p-3 bg-white rounded-xl border border-gray-200 shadow-sm hover:border-[#083c79] transition-colors group">
+                                <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold mr-3 shrink-0 text-sm ${(apt.type === 'bloqueo' || apt.type === 'cirugia') ? (apt.type === 'cirugia' ? 'bg-red-500' : 'bg-gray-400') : 'bg-[#083c79]'}`}>
+                                    {(apt.type === 'bloqueo' || apt.type === 'cirugia')
+                                        ? (apt.type === 'bloqueo' ? <Clock size={16} /> : <AlertTriangle size={16} />)
+                                        : (patient ? patient.firstName.charAt(0) : '?')
+                                    }
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="font-bold text-gray-900 truncate text-sm">
+                                        {(apt.type === 'bloqueo' || apt.type === 'cirugia')
+                                            ? (apt.type === 'bloqueo' ? 'BLOQUEADO' : 'CIRUGÍA')
+                                            : (patient ? `${patient.firstName} ${patient.lastName}` : 'Desconocido')
+                                        }
+                                    </h4>
+                                    <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                                        <span className="font-mono bg-[#083c79]/5 text-[#083c79] px-1.5 py-0.5 rounded font-bold">{apt.time}</span>
+                                        <span className="truncate">{apt.reason}</span>
                                     </div>
-                                );
-                            })}
-                            {selectedDayAppointments.length === 0 && (
-                                <p className="text-center text-gray-500 py-4">No hay citas para este día.</p>
-                            )}
-                        </div>
-                    </GlassCard>
-                </div>
-            )}
-
-            {/* Edit Appointment Modal - Kept GlassCard for Modal as user didn't specify changing this, but inputs inside are consistent */}
-            {editingAppointment && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <GlassCard className="w-full max-w-md p-0 overflow-hidden shadow-2xl">
-                        <div className="bg-[#083c79] p-6 flex justify-between items-center text-white">
-                            <h3 className="text-xl font-bold">Editar Cita</h3>
-                            <button onClick={() => setEditingAppointment(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
-                        </div>
-                        <div className="p-8 space-y-0.5 bg-white">
-                            <FloatingLabelInput
-                                label="Fecha"
-                                type="date"
-                                value={editingAppointment.date}
-                                onChange={(e) => setEditingAppointment({ ...editingAppointment, date: e.target.value })}
-                            />
-                            <FloatingLabelInput
-                                label="Hora"
-                                type="time"
-                                value={editingAppointment.time}
-                                onChange={(e) => setEditingAppointment({ ...editingAppointment, time: e.target.value })}
-                            />
-                            <FloatingLabelSelect
-                                label="Tipo de Cita"
-                                value={editingAppointment.type}
-                                onChange={(e) => setEditingAppointment({ ...editingAppointment, type: e.target.value as 'presencial' | 'virtual' })}
-                                options={[
-                                    { label: 'Presencial', value: 'presencial' },
-                                    { label: 'Virtual', value: 'virtual' }
-                                ]}
-                            />
-                            <FloatingLabelInput
-                                label="Motivo"
-                                as="textarea"
-                                value={editingAppointment.reason}
-                                onChange={(e) => setEditingAppointment({ ...editingAppointment, reason: e.target.value })}
-                                rows={3}
-                            />
-
-                            <div className="flex justify-end gap-3 pt-6">
-                                <button
-                                    onClick={() => setEditingAppointment(null)}
-                                    className="px-6 py-3 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleUpdateAppointment}
-                                    disabled={isSaving}
-                                    className="px-6 py-3 rounded-xl font-bold text-white bg-[#083c79] hover:brightness-110 transition-all shadow-lg flex items-center gap-2 active:scale-95"
-                                >
-                                    {isSaving ? 'Guardando...' : 'Guardar Cambios'}
-                                </button>
+                                </div>
+                                <div className="flex gap-2">
+                                    {apt.patientId && apt.type !== 'bloqueo' && apt.type !== 'cirugia' && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); navigate(`/app/profile/${apt.patientId}`); }}
+                                            className="p-1.5 text-[#083c79] hover:bg-blue-50 rounded-full transition-colors"
+                                            title="Ver Perfil"
+                                            aria-label="Ver perfil del paciente"
+                                        >
+                                            <Eye size={16} />
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={(e) => handleEditAppointment(apt.id, e)}
+                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                                        aria-label="Editar cita"
+                                    >
+                                        <Edit2 size={16} />
+                                    </button>
+                                    <button
+                                        onClick={(e) => handleDeleteAppointment(apt.id, e)}
+                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                                        aria-label="Eliminar cita"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    </GlassCard>
+                        );
+                    })}
+                    {selectedDayAppointments?.length === 0 && (
+                        <p className="text-center text-gray-500 py-4">No hay citas para este día.</p>
+                    )}
                 </div>
-            )}
+            </Modal>
+
+            {/* Edit Appointment Modal */}
+            <Modal
+                isOpen={!!editingAppointment}
+                onClose={() => setEditingAppointment(null)}
+                title="Editar Cita"
+                className="max-w-md"
+            >
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <FloatingLabelInput
+                            label="Fecha"
+                            type="date"
+                            value={editingAppointment?.date || ''}
+                            onChange={(e) => setEditingAppointment(prev => prev ? { ...prev, date: e.target.value } : null)}
+                        />
+                        <FloatingLabelSelect
+                            label="Hora"
+                            value={editingAppointment?.time || ''}
+                            onChange={(e) => setEditingAppointment(prev => prev ? { ...prev, time: e.target.value } : null)}
+                            options={TIME_SLOTS.map(t => ({ value: t, label: t }))}
+                        />
+                    </div>
+
+                    <FloatingLabelSelect
+                        label="Tipo de Cita"
+                        value={editingAppointment?.type || 'presencial'}
+                        onChange={(e) => setEditingAppointment(prev => prev ? { ...prev, type: e.target.value as any } : null)}
+                        options={[
+                            { label: 'Presencial', value: 'presencial' },
+                            { label: 'Virtual', value: 'virtual' },
+                            { label: 'Cirugía', value: 'cirugia' },
+                            { label: 'Bloqueo / No Disponible', value: 'bloqueo' }
+                        ]}
+                    />
+
+                    <FloatingLabelInput
+                        label="Motivo"
+                        as="textarea"
+                        value={editingAppointment?.reason || ''}
+                        onChange={(e) => setEditingAppointment(prev => prev ? { ...prev, reason: e.target.value } : null)}
+                        rows={3}
+                    />
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <button
+                            onClick={() => setEditingAppointment(null)}
+                            className="px-4 py-2 rounded-xl font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleUpdateAppointment}
+                            disabled={isSaving}
+                            className="px-6 py-2 rounded-xl font-bold text-white bg-[#083c79] hover:bg-blue-800 transition-colors shadow-lg disabled:bg-gray-300"
+                        >
+                            {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* New Appointment Modal */}
             {showNewAppointmentModal && (
@@ -868,6 +897,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                                     setConflictWarning(null);
                                 }}
                                 className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                                aria-label="Cerrar modal"
                             >
                                 <X className="w-6 h-6" />
                             </button>
@@ -1019,7 +1049,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                     </GlassCard>
                 </div >
             )}
-        </div >
+        </PageTransition>
     );
 
 };

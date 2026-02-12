@@ -7,6 +7,7 @@
  */
 
 import * as admin from "firebase-admin";
+import * as logger from "firebase-functions/logger";
 import { createAuditLog, logRoleChange } from "./auditLogs";
 
 // ============================================================
@@ -48,6 +49,19 @@ export async function setUserRole(
     expirationHours: number = 24 * 30, // 30 días por defecto
     ipAddress?: string
 ): Promise<void> {
+
+    // Strict Input Validation
+    if (!targetUserId || typeof targetUserId !== 'string') throw new Error("Invalid targetUserId");
+    if (!adminUserId || typeof adminUserId !== 'string') throw new Error("Invalid adminUserId");
+    if (!ASSIGNABLE_ROLES.includes(newRole)) throw new Error(`Invalid role: ${newRole}`);
+
+    // Verify Admin Permissions (Double check)
+    const adminUser = await admin.auth().getUser(adminUserId);
+    if (adminUser.customClaims?.role !== 'admin') {
+        logger.error(`Unauthorized role change attempt by ${adminUserId}`);
+        throw new Error("Unauthorized: Only admins can assign roles");
+    }
+
     // Obtener rol actual para audit log
     const userRecord = await admin.auth().getUser(targetUserId);
     const currentClaims = userRecord.customClaims || {};
@@ -81,7 +95,7 @@ export async function setUserRole(
         roleUpdatedBy: adminUserId,
     });
 
-    console.log(`Role updated for ${targetUserId}: ${previousRole} -> ${newRole}`);
+    logger.info(`Role updated`, { targetUserId, previousRole, newRole, adminUserId });
 }
 
 /**
@@ -120,6 +134,8 @@ export async function revokeUserRole(
     adminUserId: string,
     ipAddress?: string
 ): Promise<void> {
+    if (!targetUserId || !adminUserId) throw new Error("Invalid arguments");
+
     await setUserRole(targetUserId, "patient", adminUserId, 24 * 365, ipAddress);
 
     await createAuditLog("ROLE_CHANGED", adminUserId, {

@@ -39,6 +39,8 @@ export const db = initializeFirestore(app, {
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
+// NOTE: App Check está actualmente DESACTIVADO para permitir pruebas en producción con múltiples usuarios.
+// Se activará más adelante. Para activarlo, configurar VITE_RECAPTCHA_SITE_KEY en el entorno de producción.
 // Solo activar en producción Y si la Site Key está configurada
 if (import.meta.env.PROD && RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY.startsWith('6L')) {
     try {
@@ -46,7 +48,7 @@ if (import.meta.env.PROD && RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY.startsWith(
             provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY),
             isTokenAutoRefreshEnabled: true
         });
-        console.log("✅ App Check inicializado correctamente");
+
     } catch (error) {
         console.warn("⚠️ App Check no pudo inicializarse:", error);
     }

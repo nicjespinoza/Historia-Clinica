@@ -39,7 +39,8 @@ export const VisitorChatWidget = () => {
         const text = inputText;
 
         try {
-            await sendMessage(text, 'visitor');
+            const context = `Página: ${window.document.title} (${window.location.pathname})`;
+            await sendMessage(text, 'visitor', context);
             setInputText(''); // Only clear on success
         } catch (error) {
             console.error('[VisitorChatWidget] Error sending:', error);

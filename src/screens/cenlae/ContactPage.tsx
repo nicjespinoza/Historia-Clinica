@@ -3,7 +3,7 @@ import { NavbarCenlae } from './NavbarCenlae';
 import { FooterCenlae } from './FooterCenlae';
 import { useTranslation } from 'react-i18next';
 import { MapPin, Navigation, Facebook, Instagram, Linkedin } from 'lucide-react';
-import { VisitorChatWidget } from '../../components/chat/VisitorChatWidget';
+
 
 const ContactForm = () => {
     const { t } = useTranslation();
@@ -194,7 +194,7 @@ export const ContactPage = () => {
             </main>
 
             <FooterCenlae />
-            <VisitorChatWidget />
+
         </div>
     );
 };

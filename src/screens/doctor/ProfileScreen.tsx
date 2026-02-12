@@ -241,7 +241,7 @@ export const ProfileScreen = () => {
     const handleSaveConsent = () => {
         if (signatureRef && !signatureRef.isEmpty()) {
             const signatureImage = signatureRef.toDataURL();
-            console.log("Firma guardada:", signatureImage);
+
 
             // Simulation of saving
             if (selectedConsent) {
@@ -391,7 +391,7 @@ export const ProfileScreen = () => {
                     reminders: newControl.reminders
                 });
             } catch (fnError) {
-                console.log('Cloud function not available, reminders stored locally');
+                console.warn('Cloud function not available, reminders stored locally');
             }
 
             setPatient({ ...patient, endoscopicControls: updatedControls } as any);

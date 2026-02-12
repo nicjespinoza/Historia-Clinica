@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 // Asegúrate de que estas rutas sean correctas en tu proyecto
 import { NavbarCenlae } from './NavbarCenlae';
 import { FooterCenlae } from './FooterCenlae';
-import { VisitorChatWidget } from '../../components/chat/VisitorChatWidget';
+
 
 // Associations data remains static as they are entity names
 const asociaciones = [
@@ -267,7 +267,7 @@ export const DoctorProfilePage = () => {
             </main>
 
             <FooterCenlae />
-            <VisitorChatWidget />
+
         </div>
     );
 };

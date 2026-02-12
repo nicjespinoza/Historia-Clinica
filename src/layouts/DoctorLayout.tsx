@@ -80,6 +80,15 @@ export function DoctorLayout({ children, onLogout, currentUser }: DoctorLayoutPr
         },
     ];
 
+    // Hide Sidebar on Home Screen
+    if (location.pathname.endsWith('/home') || location.pathname === '/app/home') {
+        return (
+            <div className="flex flex-col h-screen w-full bg-gray-50 overflow-y-auto">
+                {children}
+            </div>
+        );
+    }
+
     return (
         <div
             className={cn(

@@ -183,8 +183,28 @@ service cloud.firestore {
     // ============================================================
     // PATIENTS COLLECTION - NIVEL 1: BLINDAJE COMPLETO
     // ============================================================
-    match /patients/{allPaths=**} {
-      allow read, write: if true;
+    // ============================================================
+    // PATIENTS COLLECTION - SEGURIDAD CORREGIDA (NIVEL 2)
+    // ============================================================
+    match /patients/{patientId} {
+      // Lectura: Staff (Doc/Admin/Asist) o el Dueño del registro
+      allow read: if isStaff() || isPatientRecordOwner(patientId);
+      
+      // Creación: Solo Staff (Nadie se auto-registra como paciente directamente aquí)
+      allow create: if isStaff();
+      
+      // Actualización/Eliminación: Solo Staff Privilegiado (Doc/Admin)
+      // Los asistentes NO pueden modificar datos sensibles ni borrar pacientes
+      allow update: if isPrivileged();
+      allow delete: if isPrivileged();
+      
+      // Subcolecciones (Records, Historiales, etc.)
+      match /{subcol=**} {
+        // Heredan lectura restringida
+        allow read: if isStaff() || isPatientRecordOwner(patientId);
+        // Escritura restringida a staff por defecto
+        allow write: if isStaff(); 
+      }
     }
     
     // ============================================================
@@ -213,13 +233,36 @@ service cloud.firestore {
     // ============================================================
     // CHAT SYSTEM (VISITOR <-> DOCTOR)
     // ============================================================
-    match /chats {
-      allow list: if true;
-    }
+    // ============================================================
+    // CHAT SYSTEM (VISITOR <-> DOCTOR)
+    // ============================================================
     match /chats/{chatId} {
-      allow read, write: if true;
-      match /{allSubcollections=**} {
-        allow read, write: if true;
+      // Helper to check if user owns this chat session
+      function isChatOwner() {
+        return isAuthenticated() && 
+               resource.data.metadata.authUid == request.auth.uid;
+      }
+      
+      // READ: Staff or Chat Owner
+      allow read: if isStaff() || isChatOwner();
+      
+      // CREATE: Authenticated (including Anonymous) and claiming ownership
+      allow create: if isAuthenticated() && 
+                       request.resource.data.metadata.authUid == request.auth.uid;
+      
+      // UPDATE: Staff or Chat Owner
+      allow update: if isStaff() || isChatOwner();
+      
+      // MESSAGES SUBCOLLECTION
+      match /messages/{messageId} {
+        // Read parent chat to verify ownership
+        function isParentChatOwner() {
+          return isAuthenticated() && 
+                 get(/databases/$(database)/documents/chats/$(chatId)).data.metadata.authUid == request.auth.uid;
+        }
+
+        allow read: if isStaff() || isParentChatOwner();
+        allow create: if isStaff() || isParentChatOwner();
       }
     }
 

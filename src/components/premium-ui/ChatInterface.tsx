@@ -29,6 +29,7 @@ interface Message {
     createdAt: Timestamp | null;
     read?: boolean;
     readAt?: Timestamp | null;
+    context?: string;
 }
 
 interface TypingStatus {
@@ -264,6 +265,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                     />
                                 ) : (
                                     <p className="leading-relaxed">{msg.content}</p>
+                                )}
+                                {msg.context && (
+                                    <div className="mt-1 mb-1 p-1 bg-black/5 dark:bg-white/10 rounded text-[10px] italic opacity-80 flex items-start gap-1">
+                                        <span className="shrink-0">📍</span>
+                                        <span>{msg.context}</span>
+                                    </div>
                                 )}
                                 <div className="flex items-center justify-end gap-1 mt-1">
                                     <span className={clsx(

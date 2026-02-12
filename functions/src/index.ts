@@ -2,6 +2,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { defineString } from "firebase-functions/params"; // Removed defineSecret
 import * as admin from "firebase-admin";
+import * as logger from "firebase-functions/logger";
 // import * as nodemailer from "nodemailer"; // Keep generic imports
 
 // Initialize Firebase Admin
@@ -36,6 +37,9 @@ export { logAuditFromClient } from "./auditClient";
 
 // Export IP access control function
 export { checkSystemAccess } from "./accessControl";
+
+// Export Audit Triggers
+export * from "./auditTriggers";
 
 export { setUserRole, getUserRole, isAdmin, isPrivileged, isTokenExpired, ASSIGNABLE_ROLES, ROLE_NAMES } from "./roles";
 
@@ -75,7 +79,7 @@ export const sendAppointmentReminders = onSchedule(
         region: "us-central1",
     },
     async (event) => {
-        console.log("🔔 Starting daily appointment reminder job...");
+        logger.info("🔔 Starting daily appointment reminder job...");
         try {
             // Calculate tomorrow's date range
             const now = new Date();
@@ -84,7 +88,7 @@ export const sendAppointmentReminders = onSchedule(
             tomorrowStart.setHours(0, 0, 0, 0);
 
             const tomorrowDateStr = tomorrowStart.toISOString().split("T")[0];
-            console.log(`📅 Looking for appointments on: ${tomorrowDateStr}`);
+            logger.info(`📅 Looking for appointments on: ${tomorrowDateStr}`);
 
             // Query appointments for tomorrow
             const appointmentsSnapshot = await admin.firestore()
@@ -93,20 +97,20 @@ export const sendAppointmentReminders = onSchedule(
                 .get();
 
             if (appointmentsSnapshot.empty) {
-                console.log("✅ No appointments found for tomorrow. Job complete.");
+                logger.info("✅ No appointments found for tomorrow. Job complete.");
                 return;
             }
 
-            console.log(`📋 Found ${appointmentsSnapshot.size} appointment(s) for tomorrow`);
+            logger.info(`📋 Found ${appointmentsSnapshot.size} appointment(s) for tomorrow`);
 
             // Logic to send emails (simulated for now)
-            console.log("Simulating email listing...");
+            logger.info("Simulating email listing...");
             appointmentsSnapshot.docs.forEach(doc => {
-                console.log(` - Reminder for appointment ${doc.id}`);
+                logger.info(` - Reminder for appointment ${doc.id}`);
             });
 
         } catch (error: any) {
-            console.error("❌ Critical error in appointment reminder job:", error);
+            logger.error("❌ Critical error in appointment reminder job:", error);
         }
     }
 );

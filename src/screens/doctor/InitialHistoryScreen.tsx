@@ -107,11 +107,14 @@ const NumericInput = ({
     min?: number; max?: number; step?: string; unit?: string; placeholder?: string; isOnline?: boolean;
 }) => {
     const baseClass = isOnline ? INPUT_CLASS : INPUT_CLASS.replace('border-black', 'border-red-500');
+    const inputId = React.useId();
+
     return (
         <div className="flex-1">
-            <label className="block text-xs uppercase font-bold text-gray-500 mb-1">{label}</label>
+            <label htmlFor={inputId} className="block text-xs uppercase font-bold text-gray-500 mb-1">{label}</label>
             <div className="relative">
                 <input
+                    id={inputId}
                     type="number"
                     min={min}
                     max={max}
@@ -681,7 +684,7 @@ export const InitialHistoryScreen = () => {
         const fetchHistoryIfNeeded = async () => {
             // Check if "forceNew" flag is present
             if (location.state?.forceNew) {
-                console.log("Forcing new history creation (skipping fetch)");
+
                 // reset with defaults to ensure clean state
                 reset(getDefaultInitialHistoryValues(patientId || ''));
                 return;
@@ -696,7 +699,7 @@ export const InitialHistoryScreen = () => {
                     if (histories && histories.length > 0) {
                         // Assuming the first history is the correct one for initial history context
                         // or find specific logic if multiple exist
-                        console.log("History found for patient, loading...", histories[0]);
+                        // console.log("History found for patient, loading...", histories[0]);
                         reset(normalizeMigratedData(histories[0]));
                     }
                 } catch (error) {

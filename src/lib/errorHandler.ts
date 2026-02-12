@@ -218,7 +218,7 @@ export async function withRetry<T>(
 
             // Calcular delay con exponential backoff
             const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
-            console.log(`⚠️ Intento ${attempt}/${maxAttempts} falló. Reintentando en ${delay}ms...`);
+
 
             await sleep(delay);
         }

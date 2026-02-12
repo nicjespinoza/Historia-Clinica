@@ -34,9 +34,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     showYearDropdown = true,
     showMonthDropdown = true
 }) => {
+    const id = React.useId();
     return (
         <div className={className}>
-            <label className="block text-sm font-semibold text-[#0a3d7c] mb-1.5">
+            <label htmlFor={id} className="block text-sm font-semibold text-[#0a3d7c] mb-1.5">
                 {label} {required && <span className="text-red-500">*</span>}
             </label>
             <div className={`relative flex items-center border-2 ${error ? 'border-red-400' : 'border-gray-300'} rounded-xl bg-white hover:border-[#0a3d7c] focus-within:border-[#0a3d7c] transition-colors`}>
@@ -44,6 +45,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                     <Calendar size={20} />
                 </div>
                 <ReactDatePicker
+                    id={id}
                     selected={value}
                     onChange={onChange}
                     className="w-full p-2.5 outline-none bg-transparent text-gray-800 placeholder-gray-400"

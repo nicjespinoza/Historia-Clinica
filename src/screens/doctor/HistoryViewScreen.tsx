@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { Patient, InitialHistory } from '../../types';
 import { ArrowLeft, Printer, Edit, AlertCircle, Check, Stethoscope } from 'lucide-react';
+import { PageTransition } from '../../components/ui/PageTransition';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { toast } from 'sonner';
 
 const cleanString = (str: any) => str ? String(str).trim() : '';
 
@@ -42,10 +45,12 @@ export const HistoryViewScreen = () => {
                     setHistory(h);
                 } else {
                     setError("No se encontró la historia clínica con ese ID.");
+                    toast.error("Historia no encontrada");
                 }
             } catch (err) {
                 console.error("Error cargando historia:", err);
                 setError("Ocurrió un error al cargar la información de la base de datos.");
+                toast.error("Error de conexión");
             } finally {
                 setLoading(false);
             }
@@ -211,8 +216,40 @@ export const HistoryViewScreen = () => {
     };
 
     if (loading) return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="text-[#083c79] font-bold text-xl animate-pulse">Cargando historia clínica...</div>
+        <div className="min-h-screen bg-gray-100 pb-20 font-sans">
+            {/* Navbar Skeleton */}
+            <div className="bg-white border-b sticky top-0 z-50 shadow-sm p-4">
+                <div className="max-w-5xl mx-auto flex justify-between items-center">
+                    <Skeleton className="h-8 w-48" />
+                    <div className="flex gap-2">
+                        <Skeleton className="h-10 w-24 rounded-lg" />
+                        <Skeleton className="h-10 w-24 rounded-lg" />
+                    </div>
+                </div>
+            </div>
+
+            <div className="max-w-4xl mx-auto mt-8 p-8 bg-white shadow-xl rounded-xl">
+                <div className="border-b-4 border-gray-200 pb-4 mb-6 flex justify-between">
+                    <div className="space-y-2">
+                        <Skeleton className="h-16 w-16 mb-4" />
+                        <Skeleton className="h-8 w-64" />
+                        <Skeleton className="h-4 w-32" />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Skeleton className="h-6 w-48 ml-auto" />
+                        <Skeleton className="h-4 w-32 ml-auto" />
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <Skeleton className="h-32 w-full rounded-xl" />
+                    <Skeleton className="h-8 w-48" />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Skeleton className="h-24 w-full rounded-lg" />
+                        <Skeleton className="h-24 w-full rounded-lg" />
+                    </div>
+                </div>
+            </div>
         </div>
     );
 
@@ -336,13 +373,13 @@ export const HistoryViewScreen = () => {
 
 
     return (
-        <div className="min-h-screen bg-gray-100 pb-20 font-sans print:bg-white">
+        <PageTransition className="min-h-screen bg-gray-100 pb-20 font-sans print:bg-white">
 
             {/* Navigation Bar */}
             <div className="bg-white border-b sticky top-0 z-50 print:hidden shadow-sm">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
+                        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600" aria-label="Volver">
                             <ArrowLeft size={24} />
                         </button>
                         <div>
@@ -782,6 +819,6 @@ export const HistoryViewScreen = () => {
                     </p>
                 </div>
             </div>
-        </div>
+        </PageTransition>
     );
 };

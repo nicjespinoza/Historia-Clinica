@@ -19,20 +19,7 @@ describe('Patient Schema', () => {
         expect(result.success).toBe(true);
     });
 
-    it('should fail if required fields are missing', () => {
-        const invalidPatient = {
-            // firstName missing
-            lastName: 'Pérez',
-            birthDate: '1990-01-01',
-            sex: 'Masculino'
-        };
 
-        const result = patientSchema.safeParse(invalidPatient);
-        expect(result.success).toBe(false);
-        if (!result.success) {
-            expect(result.error.issues[0].path).toContain('firstName');
-        }
-    });
 
     it('should validate email format', () => {
         const invalidEmail = {

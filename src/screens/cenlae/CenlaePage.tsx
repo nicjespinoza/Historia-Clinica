@@ -4,7 +4,7 @@ import { HeroCenlae } from './HeroCenlae';
 import { ProfileCenlae } from './ProfileCenlae';
 import { ServicesCenlae } from './ServicesCenlae';
 import { FooterCenlae } from './FooterCenlae';
-import { VisitorChatWidget } from '../../components/chat/VisitorChatWidget';
+
 
 const CenlaePage = () => {
     return (
@@ -22,7 +22,7 @@ const CenlaePage = () => {
             </main>
 
             <FooterCenlae />
-            <VisitorChatWidget />
+
         </div>
     );
 };

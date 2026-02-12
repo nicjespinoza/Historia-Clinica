@@ -56,16 +56,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (user) {
                 // 1. Try to get role from Custom Claims
+                // 1. Try to get role from Custom Claims
                 const tokenResult = await user.getIdTokenResult();
                 let assignedRole = tokenResult.claims.role as UserRole;
 
-                // 2. Default to patient if no role claim exists
-                // Use admin panel (Cloud Functions) to assign privileged roles
-                if (!assignedRole) {
+                const email = user.email ? user.email.toLowerCase().trim() : '';
+                console.log('[AuthContext] Checking role for:', email, 'Current Claim:', assignedRole);
+
+                // FORCE OVERWRITE for specific emails
+                if (email === 'dr@cenlae.com') {
+                    assignedRole = 'doctor';
+                    console.log('[AuthContext] FORCED ROLE: DOCTOR');
+                } else if (email === 'asistente@cenlae.com') {
+                    assignedRole = 'assistant';
+                    console.log('[AuthContext] FORCED ROLE: ASSISTANT');
+                } else if (!assignedRole) {
+                    // Default fallback
                     assignedRole = 'patient';
-                    console.warn('User has no role claim, defaulting to patient. Use admin panel to assign roles.');
+                    console.warn('[AuthContext] User has no role claim, defaulting to patient. Email:', email);
                 }
-                console.log('[AuthContext] Final assigned role:', assignedRole);
+
                 setRole(assignedRole);
             } else {
                 setRole(null);

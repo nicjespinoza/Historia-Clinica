@@ -213,41 +213,61 @@ export const Body3DDesigner = () => {
                     </div>
                 </div>
 
-                {/* Escena 3D */}
-                <div className="w-full h-full cursor-move bg-gradient-to-b from-gray-50 to-gray-100">
-                    {/* 2. CORRECCIÓN: 'near: 0.001' permite acercar la cámara a milímetros sin que se corte la imagen */}
-                    <Canvas camera={{ position: [0, 0, 4], fov: 50, near: 0.001 }}>
+                {/* Escena 3D o Fallback 2D */}
+                <div className="w-full h-full cursor-move bg-gradient-to-b from-gray-50 to-gray-100 relative">
+                    {/* Fallback para Móviles */}
+                    <div className="md:hidden w-full h-full flex flex-col items-center justify-center p-6 text-center">
+                        <div className="w-48 h-48 bg-blue-50 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                            <span className="text-4xl">⚠️</span>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">Vista 3D Limitada en Móvil</h3>
+                        <p className="text-gray-500 text-sm max-w-xs mb-6">
+                            Para una mejor experiencia y editar el modelo 3D con precisión, por favor utilice una tablet o computadora de escritorio.
+                        </p>
+                        <button
+                            onClick={() => navigate(`/app/profile/${patientId}`)}
+                            className="bg-white border border-gray-200 text-gray-700 font-bold py-2 px-6 rounded-xl shadow-sm hover:bg-gray-50"
+                        >
+                            Volver al Perfil
+                        </button>
+                    </div>
 
-                        {/* Iluminación mejorada para ver interiores */}
-                        <ambientLight intensity={0.5} /> {/* Más luz base */}
-                        <pointLight position={[10, 10, 10]} intensity={1} />
-                        <pointLight position={[-10, -10, -10]} intensity={0.5} />
-                        {/* Luz interna para ver dentro del estómago */}
-                        <pointLight position={[0, 0, 0]} intensity={2} distance={3} decay={2} color="#ffb0b0" />
+                    {/* Canvas 3D - Solo en Desktop (md+) */}
+                    <div className="hidden md:block w-full h-full">
+                        {/* 2. CORRECCIÓN: 'near: 0.001' permite acercar la cámara a milímetros sin que se corte la imagen */}
+                        <Canvas camera={{ position: [0, 0, 4], fov: 50, near: 0.001 }}>
 
-                        <Environment preset="city" />
+                            {/* Iluminación mejorada para ver interiores */}
+                            <ambientLight intensity={0.5} /> {/* Más luz base */}
+                            <pointLight position={[10, 10, 10]} intensity={1} />
+                            <pointLight position={[-10, -10, -10]} intensity={0.5} />
+                            {/* Luz interna para ver dentro del estómago */}
+                            <pointLight position={[0, 0, 0]} intensity={2} distance={3} decay={2} color="#ffb0b0" />
 
-                        <Suspense fallback={null}>
-                            <StomachModel
-                                onPointClick={setMarker}
-                                currentMarker={marker}
-                                observations={observations}
-                                onDeleteObservation={handleDeleteObservation}
+                            <Environment preset="city" />
+
+                            <Suspense fallback={<Html center><div className="text-gray-500 font-bold">Cargando Modelo...</div></Html>}>
+                                <StomachModel
+                                    onPointClick={setMarker}
+                                    currentMarker={marker}
+                                    observations={observations}
+                                    onDeleteObservation={handleDeleteObservation}
+                                />
+                                {/* Sombras suaves en el piso */}
+                                <ContactShadows position={[0, -2.5, 0]} opacity={0.4} scale={10} blur={2.5} far={4} />
+                            </Suspense>
+
+                            <OrbitControls
+                                makeDefault
+                                enablePan={true}
+                                enableZoom={true}
+                                /* 3. CORRECCIÓN: minDistance muy bajo permite navegar DENTRO del modelo */
+                                minDistance={0.001}
+                                maxDistance={10}
+                                rotateSpeed={0.5}
                             />
-                            {/* Sombras suaves en el piso */}
-                            <ContactShadows position={[0, -2.5, 0]} opacity={0.4} scale={10} blur={2.5} far={4} />
-                        </Suspense>
-
-                        <OrbitControls
-                            makeDefault
-                            enablePan={true}
-                            enableZoom={true}
-                            /* 3. CORRECCIÓN: minDistance muy bajo permite navegar DENTRO del modelo */
-                            minDistance={0.001}
-                            maxDistance={10}
-                            rotateSpeed={0.5}
-                        />
-                    </Canvas>
+                        </Canvas>
+                    </div>
                 </div>
 
                 {/* Bottom Bar 'Guardar' */}
