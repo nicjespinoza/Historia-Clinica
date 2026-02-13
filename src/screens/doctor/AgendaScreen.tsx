@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar as CalendarIcon, Clock, CheckCircle, ChevronLeft, ChevronRight, X, Trash2, Edit2, Plus, Users, Video, MapPin, AlertTriangle, Eye } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, CheckCircle, ChevronLeft, ChevronRight, X, Trash2, Edit2, Plus, Users, Video, MapPin, AlertTriangle, Eye, CalendarCheck, CalendarX } from 'lucide-react';
+import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
 import { api } from '../../lib/api';
 import { Patient, Appointment } from '../../types';
 import { GlassCard } from '../../components/premium-ui/GlassCard';
@@ -35,31 +36,73 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
     const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
     const [view, setView] = useState<'month' | 'week'>('month');
 
+    // Google Calendar
+    const { login, logout, isAuthorized, createEvent, updateEvent, deleteEvent, events, refreshEvents } = useGoogleCalendar();
+    const [createInGoogle, setCreateInGoogle] = useState(true);
+
     // Merge prop patients with fetched patients
     const patients = propPatients.length > 0 ? propPatients : localPatients;
 
-    // Data Fetching Logic
+    // Computed Appointments (Local + Google)
+    const displayedAppointments = useMemo(() => {
+        // Convert google events to appointments
+        const gAppointments = events.map(ge => {
+            // Check if this google event is already linked to a local appointment
+            const existing = appointments.find(a => a.googleEventId === ge.id);
+            if (existing) return null; // Skip, show local version
+
+            // Handle date/time
+            // If dateTime exists, use it. If not (all day), use date and default time (e.g. 00:00)
+            const startStr = ge.start?.dateTime || ge.start?.date;
+            if (!startStr) return null;
+
+            const start = new Date(startStr);
+            const dateStr = start.toISOString().split('T')[0];
+            const timeStr = ge.start?.dateTime
+                ? start.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false })
+                : 'Todo el día';
+
+            return {
+                id: `google_${ge.id}`,
+                patientId: 'GOOGLE_EVENT', // Placeholder
+                date: dateStr,
+                time: timeStr.slice(0, 5), // Ensure HH:MM
+                type: 'bloqueo',
+                reason: `📅 G-Calendar: ${ge.summary || 'Sin título'}`,
+                notes: ge.description,
+                googleEventId: ge.id,
+                // Add a flag if we want custom styling for external events
+            } as Appointment;
+        }).filter(Boolean) as Appointment[];
+
+        return [...appointments, ...gAppointments];
+    }, [appointments, events]);
+
+    // Data Fetching Logic (Updated for Google)
     const fetchAppointmentsForMonth = async (date: Date) => {
         try {
             const year = date.getFullYear();
             const month = date.getMonth() + 1;
-
-            // Calculate start and end of month formatted as YYYY-MM-DD
             const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
             const lastDay = new Date(year, month, 0).getDate();
             const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-
-
+            // Fetch Local
             const apps = await api.getAppointmentsByDateRange(startDate, endDate);
-
             const mappedApps = apps.map((a, i) => ({
                 ...a,
-                confirmed: a.confirmed ?? (i % 2 === 0), // Fallback logic preserved, though ideally should come from DB
+                confirmed: a.confirmed ?? (i % 2 === 0),
                 uniqueId: a.uniqueId || `CITA-${1000 + i}`
             }));
-
             setAppointments(mappedApps);
+
+            // Fetch Google (if authorized)
+            if (isAuthorized) {
+                const gStart = new Date(year, month - 1, 1).toISOString();
+                const gEnd = new Date(year, month, 0, 23, 59, 59).toISOString();
+                refreshEvents(gStart, gEnd);
+            }
+
         } catch (error) {
             console.error("Error loading agenda data:", error);
         }
@@ -113,9 +156,17 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
         return day === today.getDate() && currentDate.getMonth() === today.getMonth() && currentDate.getFullYear() === today.getFullYear();
     };
 
+    // Helper to get appointments for a specific day
     const getAppointmentsForDay = (day: number) => {
-        const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        return appointments.filter(a => a.date === dateStr);
+        return displayedAppointments.filter(app => {
+            const appDate = new Date(app.date);
+            // Fix timezone offset issue by using UTC components if date string is YYYY-MM-DD
+            // Or simple string comparison if date is YYYY-MM-DD
+            const [y, m, d] = app.date.split('-').map(Number);
+            return d === day &&
+                m === (currentDate.getMonth() + 1) &&
+                y === currentDate.getFullYear();
+        }).sort((a, b) => a.time.localeCompare(b.time));
     };
 
     // Upcoming List Logic
@@ -141,10 +192,10 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
     }, [currentDate, selectedDay]);
 
     const selectedDayAppointmentsList = useMemo(() => {
-        return appointments
+        return displayedAppointments
             .filter(a => a.date === selectedDayStr)
             .sort((a, b) => a.time.localeCompare(b.time));
-    }, [appointments, selectedDayStr]);
+    }, [displayedAppointments, selectedDayStr]);
 
     const selectedDayFormatted = useMemo(() => {
         const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), selectedDay);
@@ -171,7 +222,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
         const requestedTime = new Date(`${date}T${time}:00`);
         const requestedEnd = new Date(requestedTime.getTime() + APPOINTMENT_DURATION * 60000);
 
-        const conflict = appointments.find(a => {
+        const conflict = displayedAppointments.find(a => {
             if (a.date !== date || a.id === excludeId) return false;
 
             const existingStart = new Date(`${a.date}T${a.time}:00`);
@@ -188,7 +239,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
     const getAvailableSlots = (date: string) => {
         const bookedSlots = new Set<string>();
 
-        appointments.filter(a => a.date === date).forEach(apt => {
+        displayedAppointments.filter(a => a.date === date).forEach(apt => {
             // Mark the slot as booked
             bookedSlots.add(apt.time);
         });
@@ -218,18 +269,48 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
 
         setIsSaving(true);
         try {
+            let googleEventId: string | undefined = undefined;
+
+            // Google Calendar Integration
+            if (isAuthorized && createInGoogle) {
+                const patient = patients.find(p => p.id === newAppointment.patientId);
+                const startDateTime = new Date(`${newAppointment.date}T${newAppointment.time}`);
+                // Fix Date Object creation for Safari/older browsers strictness, ensure ISO format is used safely or standard constructor
+                // Assuming standard YYYY-MM-DD and HH:MM
+                const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // 1 hour duration
+
+                const gEvent = await createEvent({
+                    summary: newAppointment.type === 'bloqueo'
+                        ? `Bloqueo Agenda: ${newAppointment.reason}`
+                        : `Consulta: ${patient?.firstName || ''} ${patient?.lastName || ''}`,
+                    description: `Motivo: ${newAppointment.reason}\nTipo: ${newAppointment.type}`,
+                    start: startDateTime.toISOString(),
+                    end: endDateTime.toISOString(),
+                    email: patient?.email
+                });
+
+                if (gEvent?.id) {
+                    googleEventId = gEvent.id;
+                }
+            }
+
             const created = await api.createAppointment({
                 patientId: newAppointment.patientId || 'BLOQUEO', // Fallback for blocked slots
                 date: newAppointment.date,
                 time: newAppointment.time,
                 type: newAppointment.type,
-                reason: newAppointment.reason
+                reason: newAppointment.reason,
+                googleEventId // Store Google ID
             });
+
             setAppointments(prev => [...prev, created]);
             setShowNewAppointmentModal(false);
             setNewAppointment({ patientId: '', date: '', time: '', type: 'presencial', reason: '' });
             setConflictWarning(null);
-            toast.success(newAppointment.type === 'bloqueo' ? 'Horario bloqueado exitosamente' : 'Cita creada exitosamente');
+
+            const successMsg = newAppointment.type === 'bloqueo' ? 'Horario bloqueado exitosamente' : 'Cita creada exitosamente';
+            toast.success(googleEventId ? `${successMsg} y sincronizada` : successMsg);
+
         } catch (error) {
             console.error('Error creating appointment:', error);
             toast.error('Error al crear la cita');
@@ -251,6 +332,23 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
         if (!editingAppointment) return;
         setIsSaving(true);
         try {
+            // Update Google Calendar if linked
+            if (isAuthorized && editingAppointment.googleEventId) {
+                const patient = patients.find(p => p.id === editingAppointment.patientId);
+                const startDateTime = new Date(`${editingAppointment.date}T${editingAppointment.time}`);
+                const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+
+                await updateEvent(editingAppointment.googleEventId, {
+                    summary: editingAppointment.type === 'bloqueo'
+                        ? `Bloqueo Agenda: ${editingAppointment.reason}`
+                        : `Consulta: ${patient?.firstName || ''} ${patient?.lastName || ''}`,
+                    description: `Motivo: ${editingAppointment.reason}\nTipo: ${editingAppointment.type}`,
+                    start: startDateTime.toISOString(),
+                    end: endDateTime.toISOString(),
+                    email: patient?.email
+                });
+            }
+
             await api.updateAppointment(editingAppointment.id, {
                 date: editingAppointment.date,
                 time: editingAppointment.time,
@@ -272,6 +370,12 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
         e.stopPropagation();
         if (window.confirm('¿Está seguro de eliminar esta cita permanentemente?')) {
             try {
+                // Delete from Google Calendar if linked
+                const apt = appointments.find(a => a.id === id);
+                if (isAuthorized && apt?.googleEventId) {
+                    await deleteEvent(apt.googleEventId);
+                }
+
                 await api.deleteAppointment(id);
                 setAppointments(prev => prev.filter(a => a.id !== id));
                 toast.success('Cita eliminada');
@@ -400,10 +504,24 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                                 <CalendarIcon className="text-white" size={32} />
                             </div>
                             <div>
-                                <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                                <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight drop-shadow-md">
                                     Agenda Médica
-                                </h2>
-                                <p className="text-blue-200/80 mt-1">Gestiona tus citas y disponibilidad</p>
+                                </h1>
+                                <p className="text-blue-200 font-medium text-lg flex items-center gap-2">
+                                    <span className='opacity-80'>Gestión de citas y horarios</span>
+                                    {/* Google Calendar Status */}
+                                    <button
+                                        onClick={isAuthorized ? logout : login}
+                                        className={`ml-4 flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border transition-all ${isAuthorized
+                                            ? 'bg-green-500/20 border-green-400/50 text-green-100 hover:bg-green-500/30'
+                                            : 'bg-white/10 border-white/20 text-blue-100 hover:bg-white/20'
+                                            }`}
+                                        title={isAuthorized ? "Desconectar Google Calendar" : "Conectar Google Calendar"}
+                                    >
+                                        {isAuthorized ? <CalendarCheck size={14} /> : <CalendarX size={14} />}
+                                        {isAuthorized ? 'G-Calendar Activo' : 'Conectar G-Calendar'}
+                                    </button>
+                                </p>
                             </div>
                         </div>
 
@@ -504,7 +622,7 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                             {view === 'week' ? (
                                 <WeeklyCalendar
                                     currentDate={currentDate}
-                                    appointments={appointments}
+                                    appointments={displayedAppointments}
                                     patients={patients}
                                     onDateChange={setCurrentDate}
                                     onAppointmentClick={(apt) => {
@@ -617,12 +735,32 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                             <div className="p-4 max-h-[500px] overflow-y-auto">
                                 {selectedDayAppointmentsList.length > 0 ? (
                                     <div className="space-y-3">
-                                        {selectedDayAppointmentsList.map(apt => {
-                                            const patient = patients.find(p => p.id === apt.patientId);
+                                        {selectedDayAppointmentsList.map((apt) => {
                                             const styles = getAppointmentStyles(apt.type);
+                                            const patient = patients.find(p => p.id === apt.patientId);
+                                            // Check if Google Event (external)
+                                            const isExternal = apt.id.startsWith('google_');
+
                                             return (
-                                                <div key={apt.id} className={`p-4 rounded-xl border-l-4 ${apt.confirmed ? 'border-l-green-500' : 'border-l-yellow-400'} ${styles.bg} hover:shadow-md transition-all group`}>
-                                                    <div className="flex items-start gap-3">
+                                                <div
+                                                    key={apt.id}
+                                                    className={`p-3 rounded-xl border ${styles.bg} ${styles.border} transition-all hover:shadow-md cursor-pointer`}
+                                                    onClick={() => {
+                                                        // Prevent editing purely external events for now, or open modal in read-only
+                                                        if (isExternal) {
+                                                            const confirmDelete = window.confirm(`Evento de Google: "${apt.reason}".\n\n¿Desea eliminarlo del calendario?`);
+                                                            if (confirmDelete && apt.googleEventId) {
+                                                                deleteEvent(apt.googleEventId).then(() => {
+                                                                    // Refresh
+                                                                    fetchAppointmentsForMonth(currentDate);
+                                                                });
+                                                            }
+                                                        } else {
+                                                            setEditingAppointment(apt);
+                                                        }
+                                                    }}
+                                                >
+                                                    <div className="flex justify-between items-start mb-2">
                                                         {/* Avatar */}
                                                         <div className={`w-12 h-12 rounded-full ${styles.dot} flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-sm`}>
                                                             {(apt.type === 'bloqueo' || apt.type === 'cirugia')
@@ -1024,7 +1162,22 @@ export const AgendaScreen = ({ patients: propPatients = [] }: AgendaScreenProps)
                             />
 
                             {/* Actions */}
-                            <div className="flex gap-3 pt-4">
+                            {isAuthorized && (
+                                <div className="flex items-center gap-2 px-1 pb-2">
+                                    <input
+                                        type="checkbox"
+                                        id="gcalendar"
+                                        checked={createInGoogle}
+                                        onChange={(e) => setCreateInGoogle(e.target.checked)}
+                                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <label htmlFor="gcalendar" className="text-sm font-medium text-gray-600 flex items-center gap-1">
+                                        <CalendarCheck size={14} className="text-green-600" /> Sincronizar con Google Calendar
+                                    </label>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 pt-2">
                                 <button
                                     onClick={() => {
                                         setShowNewAppointmentModal(false);

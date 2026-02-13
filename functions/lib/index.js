@@ -1,10 +1,25 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.scheduleEndoscopicReminders = exports.checkEmailAvailability = exports.getDashboardAdvancedStats = exports.generateAIAnalysis = exports.sendAppointmentReminders = exports.createPaymentIntent = exports.baseUrl = exports.ROLE_NAMES = exports.ASSIGNABLE_ROLES = exports.isTokenExpired = exports.isPrivileged = exports.isAdmin = exports.getUserRole = exports.setUserRole = exports.checkSystemAccess = exports.logAuditFromClient = exports.logMedicalRecordDeletion = exports.logPaymentEvent = exports.createAuditLog = exports.restoreFromBackup = exports.getBackupHistory = exports.triggerManualBackup = exports.scheduledBackup = exports.toggleUserStatus = exports.listUsers = exports.getAuditStats = exports.getAuditLogs = exports.checkTokenExpiration = exports.forceLogout = exports.renewToken = exports.revokeRole = exports.assignUserRole = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const params_1 = require("firebase-functions/params"); // Removed defineSecret
 const admin = require("firebase-admin");
+const logger = require("firebase-functions/logger");
 // import * as nodemailer from "nodemailer"; // Keep generic imports
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -36,6 +51,8 @@ Object.defineProperty(exports, "logAuditFromClient", { enumerable: true, get: fu
 // Export IP access control function
 var accessControl_1 = require("./accessControl");
 Object.defineProperty(exports, "checkSystemAccess", { enumerable: true, get: function () { return accessControl_1.checkSystemAccess; } });
+// Export Audit Triggers
+__exportStar(require("./auditTriggers"), exports);
 var roles_1 = require("./roles");
 Object.defineProperty(exports, "setUserRole", { enumerable: true, get: function () { return roles_1.setUserRole; } });
 Object.defineProperty(exports, "getUserRole", { enumerable: true, get: function () { return roles_1.getUserRole; } });
@@ -71,7 +88,7 @@ exports.sendAppointmentReminders = (0, scheduler_1.onSchedule)({
     timeZone: "America/Managua", // Nicaragua timezone (CST/UTC-6)
     region: "us-central1",
 }, async (event) => {
-    console.log("🔔 Starting daily appointment reminder job...");
+    logger.info("🔔 Starting daily appointment reminder job...");
     try {
         // Calculate tomorrow's date range
         const now = new Date();
@@ -79,25 +96,25 @@ exports.sendAppointmentReminders = (0, scheduler_1.onSchedule)({
         tomorrowStart.setDate(now.getDate() + 1);
         tomorrowStart.setHours(0, 0, 0, 0);
         const tomorrowDateStr = tomorrowStart.toISOString().split("T")[0];
-        console.log(`📅 Looking for appointments on: ${tomorrowDateStr}`);
+        logger.info(`📅 Looking for appointments on: ${tomorrowDateStr}`);
         // Query appointments for tomorrow
         const appointmentsSnapshot = await admin.firestore()
             .collection("appointments")
             .where("date", "==", tomorrowDateStr)
             .get();
         if (appointmentsSnapshot.empty) {
-            console.log("✅ No appointments found for tomorrow. Job complete.");
+            logger.info("✅ No appointments found for tomorrow. Job complete.");
             return;
         }
-        console.log(`📋 Found ${appointmentsSnapshot.size} appointment(s) for tomorrow`);
+        logger.info(`📋 Found ${appointmentsSnapshot.size} appointment(s) for tomorrow`);
         // Logic to send emails (simulated for now)
-        console.log("Simulating email listing...");
+        logger.info("Simulating email listing...");
         appointmentsSnapshot.docs.forEach(doc => {
-            console.log(` - Reminder for appointment ${doc.id}`);
+            logger.info(` - Reminder for appointment ${doc.id}`);
         });
     }
     catch (error) {
-        console.error("❌ Critical error in appointment reminder job:", error);
+        logger.error("❌ Critical error in appointment reminder job:", error);
     }
 });
 // ============================================================

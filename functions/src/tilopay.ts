@@ -52,10 +52,7 @@ interface TiloPayResponse {
     raw?: any;
 }
 
-// Helper to mask PAN
-function maskPan(pan: string): string {
-    return pan.slice(0, 6) + "******" + pan.slice(-4);
-}
+
 
 /**
  * Process payment directly with TiloPay using S2S

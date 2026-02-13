@@ -257,6 +257,7 @@ export interface Appointment {
   type: 'presencial' | 'virtual' | 'cirugia' | 'bloqueo';
   reason: string;
   confirmed?: boolean;
+  googleEventId?: string; // ID del evento en Google Calendar para sincronización
   uniqueId?: string; // e.g., "CITA-123"
 }
 

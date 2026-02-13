@@ -18,6 +18,7 @@ exports.getUserRole = getUserRole;
 exports.isAdmin = isAdmin;
 exports.isPrivileged = isPrivileged;
 const admin = require("firebase-admin");
+const logger = require("firebase-functions/logger");
 const auditLogs_1 = require("./auditLogs");
 // Roles que pueden ser asignados por administradores
 exports.ASSIGNABLE_ROLES = ["admin", "doctor", "assistant", "patient"];
@@ -37,6 +38,20 @@ exports.ROLE_NAMES = {
  */
 async function setUserRole(targetUserId, newRole, adminUserId, expirationHours = 24 * 30, // 30 días por defecto
 ipAddress) {
+    var _a;
+    // Strict Input Validation
+    if (!targetUserId || typeof targetUserId !== 'string')
+        throw new Error("Invalid targetUserId");
+    if (!adminUserId || typeof adminUserId !== 'string')
+        throw new Error("Invalid adminUserId");
+    if (!exports.ASSIGNABLE_ROLES.includes(newRole))
+        throw new Error(`Invalid role: ${newRole}`);
+    // Verify Admin Permissions (Double check)
+    const adminUser = await admin.auth().getUser(adminUserId);
+    if (((_a = adminUser.customClaims) === null || _a === void 0 ? void 0 : _a.role) !== 'admin') {
+        logger.error(`Unauthorized role change attempt by ${adminUserId}`);
+        throw new Error("Unauthorized: Only admins can assign roles");
+    }
     // Obtener rol actual para audit log
     const userRecord = await admin.auth().getUser(targetUserId);
     const currentClaims = userRecord.customClaims || {};
@@ -58,7 +73,7 @@ ipAddress) {
         roleUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
         roleUpdatedBy: adminUserId,
     });
-    console.log(`Role updated for ${targetUserId}: ${previousRole} -> ${newRole}`);
+    logger.info(`Role updated`, { targetUserId, previousRole, newRole, adminUserId });
 }
 /**
  * Obtener permisos por rol
@@ -90,6 +105,8 @@ function getRolePermissions(role) {
  * Revocar rol de un usuario (volver a patient)
  */
 async function revokeUserRole(targetUserId, adminUserId, ipAddress) {
+    if (!targetUserId || !adminUserId)
+        throw new Error("Invalid arguments");
     await setUserRole(targetUserId, "patient", adminUserId, 24 * 365, ipAddress);
     await (0, auditLogs_1.createAuditLog)("ROLE_CHANGED", adminUserId, {
         targetId: targetUserId,

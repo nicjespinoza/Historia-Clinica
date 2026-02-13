@@ -123,9 +123,9 @@ export const DoctorHomeScreen = () => {
                 <div className="text-center md:text-left mb-6 md:mb-0">
                     <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-2 tracking-tight drop-shadow-md flex items-center justify-center md:justify-start gap-3">
                         <Users className="w-10 h-10 md:w-12 md:h-12 text-blue-100" />
-                        Panel Médico
+                        Bienvenido
                     </h1>
-                    <p className="text-blue-100 text-lg font-medium opacity-90">Bienvenido, Dr. Milton Mairena</p>
+                    <p className="text-blue-100 text-lg font-medium opacity-90">Dr. Milton Mairena</p>
                 </div>
 
                 {/* Action Buttons */}
@@ -196,7 +196,7 @@ export const DoctorHomeScreen = () => {
 
             {/* Footer */}
             <div className="relative z-10 text-white/40 text-xs font-medium tracking-wide mt-auto pt-8">
-                © 2026 Historia Clínica Digital • Dr. Milton Mairena
+                © 2026 HC JE v2.0.0
             </div>
 
             {/* MODAL: Password Management */}
